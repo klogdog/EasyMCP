@@ -8,15 +8,14 @@ This phase focuses on core generator components.
 
 ### Task 2.1: Implement Module Loader
 
-- [ ] Create `base/loader.ts` with main export `async function loadModules(basePath: string): Promise<Module[]>`
-- [ ] Use `fs.promises.readdir` with recursive option to scan `/tools` and `/connectors`
-- [ ] Filter files matching `*.ts` and `*.py` extensions using path.extname()
-- [ ] For each file, extract metadata by parsing JSDoc/docstring comments or looking for export const metadata = {...}
-- [ ] Return array of Module objects: `{ name: string, path: string, type: 'tool'|'connector', language: 'typescript'|'python', metadata: {...} }`
-- [ ] Add try-catch error handling for each file; log warnings for malformed modules but continue
-- [ ] Export types: `interface Module`, `interface ToolMetadata`, `interface ConnectorMetadata`
-- [ ] **Success Criteria**: Function returns all valid modules; handles missing metadata gracefully; logs clear error messages
-
+- [x] Create `base/loader.ts` with main export `async function loadModules(basePath: string): Promise<Module[]>`
+- [x] Use `fs.promises.readdir` with recursive option to scan `/tools` and `/connectors`
+- [x] Filter files matching `*.ts` and `*.py` extensions using path.extname()
+- [x] For each file, extract metadata by parsing JSDoc/docstring comments or looking for export const metadata = {...}
+- [x] Return array of Module objects: `{ name: string, path: string, type: 'tool'|'connector', language: 'typescript'|'python', metadata: {...} }`
+- [x] Add try-catch error handling for each file; log warnings for malformed modules but continue
+- [x] Export types: `interface Module`, `interface ToolMetadata`, `interface ConnectorMetadata`
+- [x] **Success Criteria**: Function returns all valid modules; handles missing metadata gracefully; logs clear error messages
 
 ### Task 2.2: Build Module Validator
 
@@ -28,7 +27,6 @@ This phase focuses on core generator components.
 - [ ] Implement schema versioning: check `metadata.schemaVersion` field, support v1.0 initially
 - [ ] Return `{ valid: boolean, errors: ValidationError[], warnings: string[] }`
 - [ ] **Success Criteria**: Rejects invalid modules; identifies naming conflicts; accepts valid MCP tool/connector schemas
-
 
 ### Task 2.3: Create Manifest Generator
 
@@ -42,7 +40,6 @@ This phase focuses on core generator components.
 - [ ] Validate final manifest against MCP protocol specification
 - [ ] **Success Criteria**: Produces valid MCP manifest JSON; all tools/connectors included; dependencies resolved
 
-
 ### Task 2.4: Build Configuration Generator
 
 - [ ] Create `base/config-generator.ts` with `async function generateConfig(manifest: MCPManifest, secrets: Record<string, string>): Promise<string>`
@@ -54,4 +51,3 @@ This phase focuses on core generator components.
 - [ ] Return formatted YAML string
 - [ ] Include validation function: `validateConfig(configString: string): boolean`
 - [ ] **Success Criteria**: Generates valid YAML; includes all connector credentials; supports env var substitution
-
