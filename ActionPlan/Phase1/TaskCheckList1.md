@@ -32,14 +32,14 @@ This phase focuses on project foundation & structure.
 - [x] Configure VS Code extensions: Docker, ESLint, Prettier
 - [x] **Success Criteria**: Opening in VS Code starts container; `docker ps` works inside container; npm packages installed
 
-### Task 1.4: Create Base Dockerfile
+### Task 1.4: Create Base Dockerfile ✅ COMPLETE
 
-- [ ] Create `Dockerfile` with base `FROM node:20-alpine`
-- [ ] Install Docker CLI: `apk add docker-cli` (for DinD operations)
-- [ ] Create WORKDIR `/app`
-- [ ] Copy `package*.json` and run `npm ci --only=production`
-- [ ] Copy source files from `/base` directory
-- [ ] Create volume mount points: `/app/tools`, `/app/connectors`, `/app/config`
-- [ ] Set ENV NODE_ENV=production
-- [ ] Define ENTRYPOINT `["node", "dist/main.js"]` with default CMD `["build"]`
-- [ ] **Success Criteria**: `docker build -t mcp-generator .` succeeds; image contains Node.js, Docker CLI, and source code
+- [x] Create `Dockerfile` with base `FROM node:20-alpine`
+- [x] Install Docker CLI: `apk add docker-cli` (for DinD operations)
+- [x] Create WORKDIR `/app`
+- [x] Copy `package*.json` and run `npm ci --only=production`
+- [x] Copy source files from `/base` directory
+- [x] Create volume mount points: `/app/tools`, `/app/connectors`, `/app/config`
+- [x] Set ENV NODE_ENV=production
+- [x] Define ENTRYPOINT `["node", "dist/main.js"]` with default CMD `["build"]`
+- [x] **Success Criteria**: `docker build -t mcp-generator .` succeeds; image contains Node.js, Docker CLI, and source code
