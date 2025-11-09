@@ -5,7 +5,11 @@
     "--privileged"
   ],
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=${localWorkspaceFolder}/tools,target=/workspace/tools,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/connectors,target=/workspace/connectors,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/config,target=/workspace/config,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/templates,target=/workspace/templates,type=bind,consistency=cached"
   ],
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
@@ -49,9 +53,12 @@
       "userGid": "1000"
     }
   },
-  "postCreateCommand": "npm install -g typescript ts-node && pip install --upgrade pip",
+  "postCreateCommand": "npm install",
   "remoteUser": "vscode",
   "containerEnv": {
     "DOCKER_BUILDKIT": "1"
+  },
+  "remoteEnv": {
+    "HOST_PROJECT_PATH": "${localWorkspaceFolder}"
   }
 }
