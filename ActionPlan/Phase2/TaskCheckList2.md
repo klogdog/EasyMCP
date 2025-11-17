@@ -19,14 +19,14 @@ This phase focuses on core generator components.
 
 ### Task 2.2: Build Module Validator
 
-- [ ] Create `base/validator.ts` with `function validateModules(modules: Module[]): ValidationResult`
-- [ ] Define Zod schemas for MCP tool spec: must have name, description, inputSchema (JSON Schema), handler function
-- [ ] Define Zod schemas for connector spec: must have name, type, authentication config, methods
-- [ ] Check for duplicate names across modules (return error if conflicts found)
-- [ ] Validate dependencies: ensure referenced npm packages are installable, check version compatibility
-- [ ] Implement schema versioning: check `metadata.schemaVersion` field, support v1.0 initially
-- [ ] Return `{ valid: boolean, errors: ValidationError[], warnings: string[] }`
-- [ ] **Success Criteria**: Rejects invalid modules; identifies naming conflicts; accepts valid MCP tool/connector schemas
+- [x] Create `base/validator.ts` with `function validateModules(modules: Module[]): ValidationResult`
+- [x] Define Zod schemas for MCP tool spec: must have name, description, inputSchema (JSON Schema), handler function
+- [x] Define Zod schemas for connector spec: must have name, type, authentication config, methods
+- [x] Check for duplicate names across modules (return error if conflicts found)
+- [x] Validate dependencies: ensure referenced npm packages are installable, check version compatibility
+- [x] Implement schema versioning: check `metadata.schemaVersion` field, support v1.0 initially
+- [x] Return `{ valid: boolean, errors: ValidationError[], warnings: string[] }`
+- [x] **Success Criteria**: Rejects invalid modules; identifies naming conflicts; accepts valid MCP tool/connector schemas
 
 ### Task 2.3: Create Manifest Generator
 

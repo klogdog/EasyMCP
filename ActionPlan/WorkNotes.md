@@ -1,105 +1,337 @@
 ## Create a new git branch for the task from Phase2 and merge back into Phase2 when finished
 
-# Work Notes - Task 2.2: Build Module Validator
+# Work Notes - Task 2.3: Create Manifest Generator
 
 ## Current Status
 
-**Task 2.1 (Implement Module Loader)** has been **COMPLETED** ✅
+**Task 2.2 (Build Module Validator)** has been **COMPLETED** ✅
 
-### What Was Done in Task 2.1
+### What Was Done in Task 2.2
 
 The previous agent successfully:
 
-1. **Reviewed Task 1.4** and confirmed Phase 1 completion
-2. **Verified development environment** with npm install and build
-3. **Created `base/loader.ts`** with:
-   - TypeScript interfaces: Module, ToolMetadata, ConnectorMetadata
-   - Main export: `async function loadModules(basePath: string): Promise<Module[]>`
-   - Directory scanning with recursive support
-   - Metadata extraction for TypeScript (export const metadata) and Python (metadata dict)
-   - Comprehensive error handling (warnings but continues processing)
-4. **Created sample modules** for testing:
-   - Tools: file-reader.ts, calculator.py
-   - Connectors: email-connector.ts, database-connector.py
-5. **Created and ran test script** (`base/test-loader.ts`):
-   - Successfully loaded 4 modules (2 tools, 2 connectors)
-   - Verified TypeScript and Python parsing
-   - Confirmed metadata extraction works correctly
-6. **Updated documentation**:
-   - TaskCheckList2.md marked Task 2.1 complete
-   - TaskCompleteNote1.md created with comprehensive details
-7. **Branch**: Changes are on `task-2.1` (branched from Phase2)
+1. **Reviewed Task 2.1** and wrote approval in TaskReview1.md
+2. **Installed Zod dependency** (v3.25.76) for schema validation
+3. **Created `base/validator.ts`** with:
+   - TypeScript interfaces: ValidationResult, ValidationError
+   - Zod schemas for tool and connector metadata validation
+   - Main export: `function validateModules(modules: Module[]): ValidationResult`
+   - Duplicate name detection (case-insensitive)
+   - Schema versioning support (v1.0)
+   - Dependency validation (npm package names and version ranges)
+   - Helper function: `formatValidationResults()` for output formatting
+4. **Created comprehensive test suite** (`base/test-validator.ts`):
+   - 8 test scenarios covering all validation cases
+   - All tests pass successfully
+   - Validates: duplicates, invalid versions, invalid types, schema versioning, dependencies
+5. **Updated documentation**:
+   - TaskCheckList2.md marked Task 2.2 complete
+   - TaskCompleteNote2.md created with comprehensive details
+6. **Branch**: Changes are on `task-2.2` (branched from Phase2)
 
 ### Review Required
 
-**IMPORTANT**: Before starting Task 2.2, you must verify the review work completed in Task 2.1:
+**IMPORTANT**: Before starting Task 2.3, you must verify the review work completed in Task 2.2:
 
-1. **Check TaskCompleteNote1.md**: Read `/workspace/ActionPlan/Phase2/Task1/TaskCompleteNote1.md` to understand what was completed
-2. **Verify loader.ts**: Review `/workspace/base/loader.ts` structure and implementation
-3. **Test the loader**: Run `node dist/test-loader.js` to verify it still works
-4. **Check sample modules**: Review `/workspace/tools` and `/workspace/connectors` directories
-5. **Document Review**: Write your review findings in `/workspace/ActionPlan/Phase2/Task1/TaskReview1.md`
+1. **Check TaskCompleteNote2.md**: Read `/workspace/ActionPlan/Phase2/Task2/TaskCompleteNote2.md` to understand what was completed
+2. **Verify validator.ts**: Review `/workspace/base/validator.ts` structure and implementation
+3. **Test the validator**: Run `node dist/test-validator.js` to verify it works
+4. **Check Zod schemas**: Review the validation schemas for tools and connectors
+5. **Document Review**: Write your review findings in `/workspace/ActionPlan/Phase2/Task2/TaskReview2.md`
 
 ### Your Review Should Include
 
-In `TaskReview1.md`, document:
+In `TaskReview2.md`, document:
 
 - ✅ What was done correctly
 - ⚠️ Any issues or concerns found
 - 💡 Suggestions for improvement (if any)
 - ✔️ Final approval status (APPROVED / NEEDS REVISION)
 
-## Your Task: Task 2.2 - Build Module Validator
+## Your Task: Task 2.3 - Create Manifest Generator
 
-Once you've completed the review of Task 2.1, proceed with Task 2.2.
+Once you've completed the review of Task 2.2, proceed with Task 2.3.
 
-### Task 2.2 Objectives
+### Task 2.3 Objectives
 
-**Goal**: Create a validation system that checks loaded modules against MCP specifications and identifies conflicts.
+**Goal**: Merge all validated modules into a single MCP server manifest that can be used to generate an actual MCP server.
 
-This task builds on the module loader from Task 2.1. You'll use Zod for schema validation to ensure modules conform to MCP standards.
+This task builds on the module loader (Task 2.1) and validator (Task 2.2). You'll create a manifest generator that combines all tools and connectors into a structured MCP manifest.
 
 **Actions Required**:
 
-1. **Install Zod Dependency**
-   - Run `npm install zod`
-   - Zod provides TypeScript-first schema validation
+1. **Create `base/generator.ts` file**
+   - Main export: `async function generateManifest(modules: Module[]): Promise<MCPManifest>`
+   - Import Module type from `./loader`
 
-2. **Create `base/validator.ts` file**
-   - Main export: `function validateModules(modules: Module[]): ValidationResult`
-   - Import the Module types from `./loader`
-
-3. **Define ValidationResult Interface**
+2. **Define MCPManifest Interface**
 
    ```typescript
-   export interface ValidationResult {
-     valid: boolean;
-     errors: ValidationError[];
-     warnings: string[];
+   export interface MCPManifest {
+     name: string;
+     version: string;
+     tools: Tool[];
+     connectors: Connector[];
+     capabilities: string[];
+     dependencies: Record<string, string>;
    }
 
-   export interface ValidationError {
-     moduleName: string;
-     field: string;
-     message: string;
-     severity: "error" | "warning";
+   export interface Tool {
+     name: string;
+     description: string;
+     version: string;
+     inputSchema?: object;
+   }
+
+   export interface Connector {
+     name: string;
+     description: string;
+     version: string;
+     type: string;
+     authentication?: object;
+     methods?: string[];
    }
    ```
 
-4. **Define Zod Schema for Tools**
-   - Required fields: name (string), description (string), version (semver string)
-   - Optional fields: inputSchema (object), capabilities (array of strings)
-   - Validate version format using regex: `/^\d+\.\d+\.\d+$/`
+3. **Merge Tool Modules**
+   - Iterate through modules where type === "tool"
+   - Extract tool metadata (name, description, version, inputSchema)
+   - Create Tool objects for the manifest
+   - Collect capabilities from tool metadata
 
-5. **Define Zod Schema for Connectors**
-   - Required fields: name (string), description (string), version (semver string), type (string)
-   - Optional fields: authentication (object), methods (array of strings)
-   - Validate type is one of: "email", "database", "api", "storage", "messaging"
+4. **Merge Connector Modules**
+   - Iterate through modules where type === "connector"
+   - Extract connector metadata (name, description, version, type, authentication, methods)
+   - Create Connector objects for the manifest
+   - Collect capabilities from connector types
 
-6. **Implement Duplicate Name Detection**
-   - Build a Set of module names as you iterate
-   - If name already exists, add error to ValidationResult
-   - Check for case-insensitive duplicates (e.g., "Email" vs "email")
+5. **Consolidate Dependencies**
+   - Collect all dependencies from module metadata
+   - Merge into single dependencies object
+   - Resolve version conflicts using highest semver version
+   - Use `semver` library for version comparison (npm install semver)
+
+6. **Generate Server Metadata**
+   - Set manifest name (e.g., "generated-mcp-server")
+   - Read version from package.json or use "0.1.0" as default
+   - Add timestamp or git commit hash if available
+
+7. **Aggregate Capabilities**
+   - Collect unique capabilities from tools and connectors
+   - Extract from metadata.capabilities arrays
+   - Infer from connector types (e.g., "email" → "email-integration")
+   - Return array of unique capability strings
+
+8. **Implement Dependency Resolution**
+   - Parse semver version strings (e.g., "^1.0.0", "~2.1.0", ">=3.0.0")
+   - Compare versions using semver.maxSatisfying() or similar
+   - Handle conflicts by selecting highest compatible version
+   - Log warnings if incompatible versions detected
+
+9. **Error Handling**
+   - Wrap generation in try-catch
+   - Validate inputs (non-empty modules array)
+   - Throw descriptive errors for invalid data
+   - Include module names in error messages
+
+10. **Validate Output**
+    - Ensure all required MCPManifest fields are present
+    - Verify tools and connectors arrays are properly formatted
+    - Check dependencies are valid npm package format
+    - Return properly structured MCPManifest object
+
+### Implementation Guidance
+
+```typescript
+import { Module } from "./loader";
+import * as semver from "semver";
+
+export interface MCPManifest {
+  name: string;
+  version: string;
+  tools: Tool[];
+  connectors: Connector[];
+  capabilities: string[];
+  dependencies: Record<string, string>;
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  version: string;
+  inputSchema?: object;
+}
+
+export interface Connector {
+  name: string;
+  description: string;
+  version: string;
+  type: string;
+  authentication?: object;
+  methods?: string[];
+}
+
+export async function generateManifest(
+  modules: Module[]
+): Promise<MCPManifest> {
+  const tools: Tool[] = [];
+  const connectors: Connector[] = [];
+  const capabilitiesSet = new Set<string>();
+  const allDependencies: Record<string, string[]> = {};
+
+  // Process tools
+  for (const module of modules) {
+    if (module.type === "tool") {
+      const metadata = module.metadata as any;
+      tools.push({
+        name: metadata.name,
+        description: metadata.description,
+        version: metadata.version,
+        inputSchema: metadata.inputSchema,
+      });
+
+      // Collect capabilities
+      if (metadata.capabilities) {
+        metadata.capabilities.forEach((cap: string) =>
+          capabilitiesSet.add(cap)
+        );
+      }
+
+      // Collect dependencies
+      if (metadata.dependencies) {
+        for (const [pkg, ver] of Object.entries(metadata.dependencies)) {
+          if (!allDependencies[pkg]) {
+            allDependencies[pkg] = [];
+          }
+          allDependencies[pkg].push(ver as string);
+        }
+      }
+    }
+  }
+
+  // Process connectors
+  for (const module of modules) {
+    if (module.type === "connector") {
+      const metadata = module.metadata as any;
+      connectors.push({
+        name: metadata.name,
+        description: metadata.description,
+        version: metadata.version,
+        type: metadata.type,
+        authentication: metadata.authentication,
+        methods: metadata.methods,
+      });
+
+      // Add connector type as capability
+      capabilitiesSet.add(`${metadata.type}-integration`);
+
+      // Collect dependencies
+      if (metadata.dependencies) {
+        for (const [pkg, ver] of Object.entries(metadata.dependencies)) {
+          if (!allDependencies[pkg]) {
+            allDependencies[pkg] = [];
+          }
+          allDependencies[pkg].push(ver as string);
+        }
+      }
+    }
+  }
+
+  // Resolve dependency versions
+  const dependencies: Record<string, string> = {};
+  for (const [pkg, versions] of Object.entries(allDependencies)) {
+    // Use highest version that satisfies all requirements
+    dependencies[pkg] = resolveVersionConflict(versions);
+  }
+
+  return {
+    name: "generated-mcp-server",
+    version: "0.1.0",
+    tools,
+    connectors,
+    capabilities: Array.from(capabilitiesSet),
+    dependencies,
+  };
+}
+
+function resolveVersionConflict(versions: string[]): string {
+  // Simple strategy: return the version with highest major.minor.patch
+  // In production, would use semver.maxSatisfying with ranges
+  return versions.sort((a, b) => {
+    try {
+      return semver.compare(
+        semver.coerce(b) || "0.0.0",
+        semver.coerce(a) || "0.0.0"
+      );
+    } catch {
+      return 0;
+    }
+  })[0];
+}
+```
+
+### Success Criteria
+
+- ✅ `base/generator.ts` file exists with all required exports
+- ✅ MCPManifest interface properly defined with all fields
+- ✅ Tool and Connector interfaces defined
+- ✅ generateManifest() function creates valid manifest from modules
+- ✅ All tools from modules are included in manifest
+- ✅ All connectors from modules are included in manifest
+- ✅ Capabilities are aggregated and deduplicated
+- ✅ Dependencies are consolidated and version conflicts resolved
+- ✅ Server metadata (name, version) is included
+- ✅ Code compiles without errors (`npm run build` succeeds)
+- ✅ Generated manifest is valid JSON structure
+
+### Testing Strategy
+
+After implementing the generator:
+
+1. Test with modules from Task 2.1 (should generate manifest with 2 tools, 2 connectors)
+2. Test capability aggregation (should include tool capabilities + connector integrations)
+3. Test dependency consolidation (add dependencies to sample modules first)
+4. Test version conflict resolution (create modules with different versions of same package)
+5. Create a test script to verify manifest structure
+6. Validate output against expected format
+
+### Documentation Requirements
+
+When complete:
+
+1. Update `ActionPlan/Phase2/TaskCheckList2.md` to mark Task 2.3 as complete
+2. Create completion note in `ActionPlan/Phase2/Task3/TaskCompleteNote3.md`
+3. Rewrite this WorkNotes.md file with instructions for the next agent (Task 2.4)
+
+## Reference Files
+
+- Task details: `/workspace/ActionPlan/Phase2/Task3/Task3.md`
+- Checklist: `/workspace/ActionPlan/Phase2/TaskCheckList2.md`
+- Previous task: `/workspace/ActionPlan/Phase2/Task2/TaskCompleteNote2.md`
+- Loader implementation: `/workspace/base/loader.ts`
+- Validator implementation: `/workspace/base/validator.ts`
+
+## Getting Started
+
+1. First, review Task 2.2 (see "Review Required" section above)
+2. Write your review in TaskReview2.md
+3. Install semver: `npm install semver @types/semver`
+4. Create the `base/generator.ts` file with required interfaces
+5. Implement tool and connector merging logic
+6. Implement dependency consolidation and version resolution
+7. Test with existing sample modules
+8. Create test script to verify manifest generation
+9. Compile and verify no errors
+10. Document completion and update checklist
+11. Rewrite this file for the next agent (Task 2.4)
+
+## Branch Management
+
+- **Current Branch**: You should be on `task-2.2`
+- **Action**: Create branch `task-2.3` from `Phase2` for your work
+- **Merge Target**: Merge back into `Phase2` when complete
+  - If name already exists, add error to ValidationResult
+  - Check for case-insensitive duplicates (e.g., "Email" vs "email")
 
 7. **Implement Dependency Validation**
    - Look for `dependencies` field in metadata
