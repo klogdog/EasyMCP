@@ -1,0 +1,60 @@
+# MCP Server Configuration
+# Generated from manifest: mcp-server v0.1.0
+# Environment: development
+# Generated at: 2025-11-18T11:07:35.885Z
+#
+# Environment Variables:
+# - Set required variables before starting the server
+# - Use format: KEY=value or KEY="value with spaces"
+# - Required variables are marked with "Required:" in comments
+# - Optional variables have default values: ${VAR:-default}
+#
+
+server:
+  name: mcp-server
+  version: 0.1.0
+  host: localhost
+  port: 3000
+connectors:
+  database-connector:
+    type: database
+    enabled: true
+    credentials:
+      url: ${DATABASE_CONNECTOR_URL}
+      username: ${DATABASE_CONNECTOR_USERNAME:-}
+      password: ${DATABASE_CONNECTOR_PASSWORD:-}
+    settings:
+      availableMethods:
+        - query
+        - insert
+        - update
+        - delete
+  email-connector:
+    type: email
+    enabled: true
+    credentials:
+      apiKey: ${EMAIL_CONNECTOR_API_KEY}
+      fromEmail: ${EMAIL_CONNECTOR_FROM_EMAIL:-noreply@example.com}
+    settings:
+      availableMethods:
+        - send
+        - receive
+        - list
+logging:
+  level: debug
+  format: pretty
+  destination: console
+features:
+  add: true
+  databaseIntegration: true
+  divide: true
+  emailIntegration: true
+  list: true
+  multiply: true
+  read: true
+  stat: true
+  subtract: true
+database:
+  url: ${DATABASE_URL}
+  poolSize: ${DB_POOL_SIZE:-10}
+  timeout: ${DB_TIMEOUT:-5000}
