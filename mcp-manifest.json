@@ -1,0 +1,58 @@
+{
+  "name": "mcp-server",
+  "version": "0.1.0",
+  "tools": [
+    {
+      "name": "calculator",
+      "description": "Performs basic mathematical operations",
+      "version": "1.0.0"
+    },
+    {
+      "name": "file-reader",
+      "description": "Reads and returns file contents from the filesystem",
+      "version": "1.0.0"
+    }
+  ],
+  "connectors": [
+    {
+      "name": "database-connector",
+      "description": "Connects to databases for querying and data manipulation",
+      "version": "1.0.0",
+      "type": "database",
+      "methods": [
+        "query",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "name": "email-connector",
+      "description": "Connects to email services for sending and receiving messages",
+      "version": "1.0.0",
+      "type": "email",
+      "methods": [
+        "send",
+        "receive",
+        "list"
+      ]
+    }
+  ],
+  "capabilities": [
+    "add",
+    "database-integration",
+    "divide",
+    "email-integration",
+    "list",
+    "multiply",
+    "read",
+    "stat",
+    "subtract"
+  ],
+  "dependencies": {},
+  "metadata": {
+    "generatedAt": "2025-11-18T11:13:22.411Z",
+    "generatorVersion": "0.1.0",
+    "moduleCount": 4
+  }
+}
