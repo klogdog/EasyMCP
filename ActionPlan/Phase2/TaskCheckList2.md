@@ -30,15 +30,15 @@ This phase focuses on core generator components.
 
 ### Task 2.3: Create Manifest Generator
 
-- [ ] Create `base/generator.ts` with `async function generateManifest(modules: Module[]): Promise<MCPManifest>`
-- [ ] Create MCPManifest structure: `{ name: string, version: string, tools: Tool[], connectors: Connector[], capabilities: string[], dependencies: Record<string, string> }`
-- [ ] Merge all tool modules: collect tool definitions, combine input schemas, aggregate capabilities
-- [ ] Merge all connector modules: collect connector configs, merge authentication requirements
-- [ ] Generate server metadata: version from git tag or package.json, timestamp, generator version
-- [ ] Consolidate dependencies: merge package.json dependencies from all modules, resolve version conflicts (use highest semver)
-- [ ] Add capabilities array: list unique capabilities like "text-processing", "email-integration", etc.
-- [ ] Validate final manifest against MCP protocol specification
-- [ ] **Success Criteria**: Produces valid MCP manifest JSON; all tools/connectors included; dependencies resolved
+- [x] Create `base/generator.ts` with `async function generateManifest(modules: Module[]): Promise<MCPManifest>`
+- [x] Create MCPManifest structure: `{ name: string, version: string, tools: Tool[], connectors: Connector[], capabilities: string[], dependencies: Record<string, string> }`
+- [x] Merge all tool modules: collect tool definitions, combine input schemas, aggregate capabilities
+- [x] Merge all connector modules: collect connector configs, merge authentication requirements
+- [x] Generate server metadata: version from git tag or package.json, timestamp, generator version
+- [x] Consolidate dependencies: merge package.json dependencies from all modules, resolve version conflicts (use highest semver)
+- [x] Add capabilities array: list unique capabilities like "text-processing", "email-integration", etc.
+- [x] Validate final manifest against MCP protocol specification
+- [x] **Success Criteria**: Produces valid MCP manifest JSON; all tools/connectors included; dependencies resolved
 
 ### Task 2.4: Build Configuration Generator
 
