@@ -1,10 +1,452 @@
 ## Create a new git branch for the task from Phase2 and merge back into Phase2 when finished
 
-# Work Notes - Task 2.3: Create Manifest Generator
+# Work Notes - Task 2.4: Build Configuration Generator
 
 ## Current Status
 
-**Task 2.2 (Build Module Validator)** has been **COMPLETED** ✅
+**Task 2.3 (Create Manifest Generator)** has been **COMPLETED** ✅
+
+### What Was Done in Task 2.3
+
+The previous agent successfully:
+
+1. **Reviewed Task 2.2** and wrote approval in TaskReview2.md
+2. **Installed Semver dependency** (v7.7.3 with @types/semver v7.7.1)
+3. **Created `base/generator.ts`** with:
+   - TypeScript interfaces: MCPManifest, Tool, Connector, ManifestMetadata
+   - Main export: `async function generateManifest(modules: Module[]): Promise<MCPManifest>`
+   - Dependency resolution with version conflict handling
+   - Capability aggregation from tools and connectors
+   - Helper functions: `resolveDependencies()`, `resolveVersionConflict()`, `saveManifest()`, `validateManifest()`
+4. **Created comprehensive test suite** (`base/test-generator.ts`):
+   - 8 test scenarios covering all generation cases
+   - All tests pass successfully
+   - Tests: loading, validation, generation, details, validation, saving, dependencies, conflict resolution
+5. **Generated sample manifest** (`mcp-manifest.json`):
+   - 2 tools: calculator, file-reader
+   - 2 connectors: database-connector, email-connector
+   - 9 unique capabilities
+   - Complete metadata with timestamp and version
+6. **Updated documentation**:
+   - TaskCheckList2.md marked Task 2.3 complete
+   - TaskCompleteNote3.md created with comprehensive details
+7. **Branch**: Changes merged to Phase2 from `task-2.3`
+
+### Review Required
+
+**IMPORTANT**: Before starting Task 2.4, you must verify the review work completed in Task 2.3:
+
+1. **Check TaskCompleteNote3.md**: Read `/workspace/ActionPlan/Phase2/Task3/TaskCompleteNote3.md` to understand what was completed
+2. **Verify generator.ts**: Review `/workspace/base/generator.ts` structure and implementation
+3. **Test the generator**: Run `npm run build && node dist/test-generator.js` to verify it works
+4. **Check generated manifest**: Review the `mcp-manifest.json` file structure
+5. **Document Review**: Write your review findings in `/workspace/ActionPlan/Phase2/Task3/TaskReview3.md`
+
+### Your Review Should Include
+
+In `TaskReview3.md`, document:
+
+- ✅ What was done correctly
+- ⚠️ Any issues or concerns found
+- 💡 Suggestions for improvement (if any)
+- ✔️ Final approval status (APPROVED / NEEDS REVISION)
+
+## Your Task: Task 2.4 - Build Configuration Generator
+
+Once you've completed the review of Task 2.3, proceed with Task 2.4.
+
+### Task 2.4 Objectives
+
+**Goal**: Generate runtime configuration file template for the MCP server that includes connector credentials, service settings, and environment variable substitution.
+
+This task builds on the manifest generator (Task 2.3). You'll create a configuration generator that produces YAML configuration files from the MCP manifest, with support for development and production variants.
+
+**Actions Required**:
+
+1. **Install js-yaml Dependency**
+   - Run `npm install js-yaml @types/js-yaml`
+   - This library will be used to generate YAML configuration files
+
+2. **Create `base/config-generator.ts` file**
+   - Main export: `async function generateConfig(manifest: MCPManifest, env: 'development' | 'production'): Promise<string>`
+   - Import MCPManifest from `./generator`
+
+3. **Define Config Schema Interface**
+
+   ```typescript
+   export interface ServerConfig {
+     server: {
+       name: string;
+       version: string;
+       host: string;
+       port: number;
+     };
+     database?: {
+       url: string;
+       poolSize: number;
+       timeout: number;
+     };
+     connectors: Record<string, ConnectorConfig>;
+     logging: {
+       level: string;
+       format: string;
+       destination: string;
+     };
+     features: Record<string, boolean>;
+   }
+
+   export interface ConnectorConfig {
+     type: string;
+     enabled: boolean;
+     credentials?: Record<string, string>;
+     settings?: Record<string, any>;
+   }
+   ```
+
+4. **Generate Server Configuration**
+   - Extract server name and version from manifest
+   - Set host and port with environment variable placeholders
+   - Development: `host: 'localhost', port: 3000`
+   - Production: `host: '0.0.0.0', port: ${PORT:-8080}`
+
+5. **Generate Connector Configurations**
+   - Iterate through manifest.connectors
+   - For each connector, create ConnectorConfig entry
+   - Add authentication placeholders as environment variables
+   - Example for email connector: `credentials: { apiKey: '${EMAIL_API_KEY}' }`
+   - Example for database connector: `url: '${DATABASE_URL}'`
+
+6. **Generate Logging Configuration**
+   - Development environment:
+     - level: "debug"
+     - format: "pretty"
+     - destination: "console"
+   - Production environment:
+     - level: "info"
+     - format: "json"
+     - destination: "stdout"
+
+7. **Generate Feature Flags**
+   - Convert manifest.capabilities to feature flags
+   - Each capability becomes a boolean flag
+   - Example: "email-integration" → `features: { emailIntegration: true }`
+
+8. **Add Environment Variable Substitution**
+   - Use `${VAR_NAME}` syntax for required secrets
+   - Use `${VAR_NAME:-default}` syntax for optional values with defaults
+   - Add inline YAML comments explaining each variable
+   - Example:
+     ```yaml
+     database:
+       url: ${DATABASE_URL} # Required: Database connection string
+       poolSize: ${DB_POOL_SIZE:-10} # Optional: Connection pool size (default: 10)
+     ```
+
+9. **Convert to YAML**
+   - Use js-yaml library's `dump()` function
+   - Configure YAML formatting:
+     - indent: 2 spaces
+     - lineWidth: 120 characters
+     - noRefs: true (no YAML references)
+     - sortKeys: false (maintain order)
+
+10. **Implement Config Validation**
+    - Create `function validateConfig(configString: string): boolean`
+    - Parse YAML using js-yaml's `load()`
+    - Check for required fields (server, logging)
+    - Verify all connectors have type and enabled fields
+    - Return true if valid, false otherwise
+
+11. **Create Helper Functions**
+    - `function createConnectorConfig(connector: Connector): ConnectorConfig`
+    - `function getEnvVarName(connectorName: string, field: string): string`
+      - Example: ("email-connector", "apiKey") → "EMAIL_CONNECTOR_API_KEY"
+    - `function camelToSnakeCase(str: string): string`
+      - Convert names to environment variable format
+
+12. **Error Handling**
+    - Validate manifest input (non-null, has required fields)
+    - Handle YAML generation errors
+    - Throw descriptive errors for invalid configurations
+    - Include manifest details in error messages
+
+### Implementation Guidance
+
+```typescript
+import { MCPManifest, Connector } from "./generator";
+import * as yaml from "js-yaml";
+
+export interface ServerConfig {
+  server: {
+    name: string;
+    version: string;
+    host: string;
+    port: number | string;
+  };
+  database?: {
+    url: string;
+    poolSize: number | string;
+    timeout: number | string;
+  };
+  connectors: Record<string, ConnectorConfig>;
+  logging: {
+    level: string;
+    format: string;
+    destination: string;
+  };
+  features: Record<string, boolean>;
+}
+
+export interface ConnectorConfig {
+  type: string;
+  enabled: boolean;
+  credentials?: Record<string, string>;
+  settings?: Record<string, any>;
+}
+
+export async function generateConfig(
+  manifest: MCPManifest,
+  env: "development" | "production"
+): Promise<string> {
+  // Build config object
+  const config: ServerConfig = {
+    server: {
+      name: manifest.name,
+      version: manifest.version,
+      host: env === "development" ? "localhost" : "0.0.0.0",
+      port: env === "development" ? 3000 : "${PORT:-8080}",
+    },
+    connectors: {},
+    logging: {
+      level: env === "development" ? "debug" : "info",
+      format: env === "development" ? "pretty" : "json",
+      destination: env === "development" ? "console" : "stdout",
+    },
+    features: {},
+  };
+
+  // Add database if needed
+  if (manifest.connectors.some((c) => c.type === "database")) {
+    config.database = {
+      url: "${DATABASE_URL}",
+      poolSize: "${DB_POOL_SIZE:-10}",
+      timeout: "${DB_TIMEOUT:-5000}",
+    };
+  }
+
+  // Generate connector configs
+  for (const connector of manifest.connectors) {
+    config.connectors[connector.name] = createConnectorConfig(connector, env);
+  }
+
+  // Generate feature flags from capabilities
+  for (const capability of manifest.capabilities) {
+    const featureName = capability.replace(/-/g, "");
+    config.features[featureName] = true;
+  }
+
+  // Convert to YAML with comments
+  const yamlString = yaml.dump(config, {
+    indent: 2,
+    lineWidth: 120,
+    noRefs: true,
+    sortKeys: false,
+  });
+
+  // Add header comment
+  const header = `# MCP Server Configuration
+# Generated from manifest: ${manifest.name} v${manifest.version}
+# Environment: ${env}
+# Generated at: ${new Date().toISOString()}
+#
+# Environment Variables:
+# - Set required variables before starting the server
+# - Use format: KEY=value or KEY="value with spaces"
+# - Required variables are marked with "Required:" in comments
+# - Optional variables have default values: \${VAR:-default}
+
+`;
+
+  return header + yamlString;
+}
+
+function createConnectorConfig(
+  connector: Connector,
+  env: string
+): ConnectorConfig {
+  const config: ConnectorConfig = {
+    type: connector.type,
+    enabled: true,
+  };
+
+  // Add credentials based on connector type
+  if (connector.authentication) {
+    config.credentials = {};
+
+    // Generate environment variable names
+    const prefix = getEnvVarName(connector.name, "");
+
+    switch (connector.type) {
+      case "email":
+        config.credentials.apiKey = `\${${prefix}_API_KEY}`;
+        config.credentials.fromEmail = `\${${prefix}_FROM_EMAIL}`;
+        break;
+      case "database":
+        config.credentials.url = `\${${prefix}_URL}`;
+        config.credentials.username = `\${${prefix}_USERNAME:-}`;
+        config.credentials.password = `\${${prefix}_PASSWORD:-}`;
+        break;
+      case "api":
+        config.credentials.apiKey = `\${${prefix}_API_KEY}`;
+        config.credentials.baseUrl = `\${${prefix}_BASE_URL}`;
+        break;
+      // Add more connector types as needed
+    }
+  }
+
+  // Add connector-specific settings
+  if (connector.methods && connector.methods.length > 0) {
+    config.settings = {
+      availableMethods: connector.methods,
+    };
+  }
+
+  return config;
+}
+
+function getEnvVarName(connectorName: string, field: string): string {
+  const baseName = camelToSnakeCase(connectorName).toUpperCase();
+  if (field) {
+    const fieldName = camelToSnakeCase(field).toUpperCase();
+    return `${baseName}_${fieldName}`;
+  }
+  return baseName;
+}
+
+function camelToSnakeCase(str: string): string {
+  return str
+    .replace(/[A-Z]/g, (letter) => `_${letter}`)
+    .replace(/[-\s]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_/, "")
+    .toUpperCase();
+}
+
+export function validateConfig(configString: string): boolean {
+  try {
+    const config = yaml.load(configString) as ServerConfig;
+
+    // Check required fields
+    if (!config.server || !config.logging) {
+      return false;
+    }
+
+    // Check server fields
+    if (
+      !config.server.name ||
+      !config.server.version ||
+      !config.server.host ||
+      !config.server.port
+    ) {
+      return false;
+    }
+
+    // Check connectors
+    if (config.connectors) {
+      for (const [name, connectorConfig] of Object.entries(config.connectors)) {
+        if (!connectorConfig.type || connectorConfig.enabled === undefined) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+```
+
+### Testing Strategy
+
+Create `base/test-config-generator.ts`:
+
+1. **Test 1: Generate Development Config**
+   - Load manifest from previous test
+   - Generate development configuration
+   - Verify YAML is valid
+   - Check for localhost and debug logging
+
+2. **Test 2: Generate Production Config**
+   - Generate production configuration
+   - Verify environment variables are present
+   - Check for 0.0.0.0 host and info logging
+
+3. **Test 3: Connector Credentials**
+   - Verify each connector has credentials section
+   - Check environment variable naming convention
+   - Ensure required fields are marked
+
+4. **Test 4: Feature Flags**
+   - Verify capabilities are converted to features
+   - Check feature names are properly formatted
+   - Ensure all features are enabled
+
+5. **Test 5: Database Configuration**
+   - If database connector exists, verify database section
+   - Check for connection pool settings
+   - Verify environment variable substitution
+
+6. **Test 6: Config Validation**
+   - Validate generated configs return true
+   - Test invalid configs return false
+   - Test malformed YAML returns false
+
+7. **Test 7: Environment Variable Names**
+   - Test `camelToSnakeCase()` conversion
+   - Verify naming convention (UPPERCASE_WITH_UNDERSCORES)
+   - Check special character handling
+
+8. **Test 8: Save Config Files**
+   - Save development config to `config/development.yaml`
+   - Save production config to `config/production.yaml`
+   - Verify files are readable
+
+### Success Criteria
+
+✅ **Generates valid YAML**: Config parses without errors  
+✅ **Includes all connectors**: Every manifest connector has config entry  
+✅ **Supports env var substitution**: Uses `${VAR_NAME}` syntax  
+✅ **Environment-specific configs**: Different settings for dev/prod  
+✅ **Proper credential placeholders**: Each connector has auth variables  
+✅ **Feature flags**: Capabilities converted to boolean flags  
+✅ **Config validation**: validateConfig() correctly validates structure  
+✅ **Comprehensive tests**: All 8 test scenarios pass
+
+### Documentation Requirements
+
+After completing the task:
+
+1. Update `TaskCheckList2.md` - mark Task 2.4 as complete
+2. Create `TaskCompleteNote4.md` with:
+   - Summary of what was implemented
+   - List of interfaces and functions created
+   - Test results (all scenarios)
+   - Sample configuration outputs (dev and prod)
+   - Files created/modified
+   - Success criteria verification
+
+### Branch Workflow
+
+1. Create branch `task-2.4` from Phase2
+2. Implement all required functionality
+3. Run all tests and verify they pass
+4. Commit changes with descriptive message
+5. Merge back to Phase2 using `git merge --no-ff task-2.4`
+
+## Next Task Preview
+
+After Task 2.4 is complete, Task 3.1 will focus on creating the Dockerfile template generator, which will use the configuration files generated in this task.
 
 ### What Was Done in Task 2.2
 
