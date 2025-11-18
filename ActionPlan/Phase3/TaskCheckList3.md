@@ -8,16 +8,15 @@ This phase focuses on user interaction & secrets.
 
 ### Task 3.1: Create Interactive Prompt System
 
-- [ ] Create `base/prompt.ts` using inquirer library
-- [ ] Export `async function promptForCredentials(requirements: CredentialRequirement[]): Promise<Record<string, string>>`
-- [ ] For each requirement, create appropriate prompt type: input (text), password (masked), confirm (yes/no), list (dropdown)
-- [ ] Add validation callbacks: email format, URL format, non-empty strings, numeric ranges
-- [ ] Implement conditional prompts: only ask for OAuth tokens if user selects OAuth authentication method
-- [ ] Add confirmation step: display all collected values (mask secrets) and ask "Proceed with these settings?"
-- [ ] Support defaults from environment variables: check process.env first, use as default value if present
-- [ ] Handle Ctrl+C gracefully: clean exit with message
-- [ ] **Success Criteria**: Prompts are user-friendly; passwords are masked; validates input format; supports defaults
-
+- [x] Create `base/prompt.ts` using inquirer library
+- [x] Export `async function promptForCredentials(requirements: CredentialRequirement[]): Promise<Record<string, string>>`
+- [x] For each requirement, create appropriate prompt type: input (text), password (masked), confirm (yes/no), list (dropdown)
+- [x] Add validation callbacks: email format, URL format, non-empty strings, numeric ranges
+- [x] Implement conditional prompts: only ask for OAuth tokens if user selects OAuth authentication method
+- [x] Add confirmation step: display all collected values (mask secrets) and ask "Proceed with these settings?"
+- [x] Support defaults from environment variables: check process.env first, use as default value if present
+- [x] Handle Ctrl+C gracefully: clean exit with message
+- [x] **Success Criteria**: Prompts are user-friendly; passwords are masked; validates input format; supports defaults
 
 ### Task 3.2: Build Secret Manager
 
@@ -31,7 +30,6 @@ This phase focuses on user interaction & secrets.
 - [ ] Create temporary file storage: write encrypted secrets to `.secrets.encrypted` for Docker build context
 - [ ] **Success Criteria**: Secrets are encrypted at rest; safe to log masked values; successfully inject into config templates
 
-
 ### Task 3.3: Create Credential Schema Discovery
 
 - [ ] Extend `loader.ts` to parse credential requirements from module metadata
@@ -43,4 +41,3 @@ This phase focuses on user interaction & secrets.
 - [ ] Handle optional credentials: mark clearly in prompts, allow skipping
 - [ ] Create type definitions: `interface CredentialRequirement { name: string, type: CredentialType, required: boolean, description: string, validation?: RegExp }`
 - [ ] **Success Criteria**: Automatically discovers all credential needs; merges duplicates; distinguishes required vs optional
-
