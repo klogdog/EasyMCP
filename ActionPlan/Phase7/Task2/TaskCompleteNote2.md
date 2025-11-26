@@ -14,18 +14,21 @@ Created a robust configuration file parser with YAML/JSON support, environment v
 ## Features Implemented
 
 ### Core Parsing
+
 - YAML parsing with js-yaml library
 - JSON parsing with graceful fallback
 - File extension detection (.yaml, .yml, .json)
 - Syntax error reporting with line numbers
 
 ### Environment Variable Substitution
+
 - `${VAR_NAME}` - Required variable substitution
 - `${VAR_NAME:-default}` - Optional with default value
 - Recursive substitution in nested objects and arrays
 - Unresolved variables preserved if no default
 
 ### Schema Validation
+
 - Zod-based validation against JSON Schema
 - Detailed error messages with field paths
 - All config sections validated:
@@ -40,11 +43,13 @@ Created a robust configuration file parser with YAML/JSON support, environment v
   - tools (enabled, timeout, settings)
 
 ### Default Value Handling
+
 - DEFAULT_CONFIG with sensible defaults
 - Deep merge preserving only overridden values
 - Configurable via options
 
 ### API Functions
+
 - `parseConfig(filePath, options)` - Parse config file
 - `parseConfigString(content, format, options)` - Parse config string
 - `validateConfig(config)` - Validate config object
@@ -54,6 +59,7 @@ Created a robust configuration file parser with YAML/JSON support, environment v
 - `deepMerge(target, source)` - Deep object merge
 
 ### Error Handling
+
 - `ConfigParseError` class with file path, line, column, field path
 - Clear error messages for debugging
 - Strict/non-strict mode for missing files
@@ -67,6 +73,7 @@ Failed: 0
 ```
 
 ### Test Categories
+
 - Environment Variable Substitution: 8 tests
 - Deep Merge: 4 tests
 - Parse Config String: 6 tests
@@ -77,6 +84,7 @@ Failed: 0
 - Integration: 2 tests
 
 **Success Criteria Met**: ✅
+
 - Parses YAML/JSON config files
 - Substitutes env vars with default support
 - Validates against schema
