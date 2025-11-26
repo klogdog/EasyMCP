@@ -415,7 +415,7 @@ server:
 test("loadConfigWithOverrides applies env vars", async () => {
     // Clean up any leftover env vars from previous tests
     delete process.env.CONFIG_SERVER_PORT;
-    
+
     process.env.CONFIG_SERVER_HOST = "envhost.local";
 
     const configPath = createTempFile("env-test.yaml", `
@@ -430,7 +430,7 @@ server:
     });
 
     assertEqual(config.server.host, "envhost.local");
-    
+
     delete process.env.CONFIG_SERVER_HOST;
 
     delete process.env.CONFIG_SERVER_PORT;
