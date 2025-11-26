@@ -1,197 +1,303 @@
-## Create a new git branch for the task from Phase5 and merge back into Phase5 when finished
+## Create a new git branch for the task from Phase6 and merge back into Phase6 when finished
 
-# Work Notes - Task 5.4: Build Entrypoint Script
+# Work Notes - Phase 6: Example Tools & Connectors
 
 ## Current Status
 
-**Task 5.3 (Connector Integration Template)** is now **COMPLETE** ✅
+**Phase 5 (MCP Server Templates)** is now **COMPLETE** ✅
 
-### What Was Completed in Task 5.3
+### What Was Completed in Phase 5
 
-- Created `base/templates/connector-loader.ts.template` (~963 lines)
-- ConnectorRegistry class with Map storage and health tracking
-- Connection pooling with ConnectionPool<T> class
-- Credential injection (OAuth, API key, basic, bearer, none)
-- Health check system with HealthCheckResult interface
-- Retry logic with exponential backoff and jitter
-- Connection lifecycle (connect, disconnect, reconnect)
-- Graceful degradation for optional connectors
-- 84 passing tests in test-connector-loader.ts
+- Task 5.1: Base Server Template (server.ts.template) - 57 tests
+- Task 5.2: Tool Integration Template (tool-loader.ts.template) - 68 tests
+- Task 5.3: Connector Integration Template (connector-loader.ts.template) - 84 tests
+- Task 5.4: Entrypoint Script Template (entrypoint.sh.template) - 88 tests
+- **Total: 297 tests passing**
 
-Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
+Full details in: `/workspace/ActionPlan/Phase5/PhaseFinalApproval.md`
 
 ---
 
-## Your Task: Task 5.4 - Build Entrypoint Script
+## Phase 6 Overview
 
-**Phase**: Phase 5 - MCP Server Templates  
-**Goal**: Create a bash script template for container/server startup.
+**Goal**: Create example tools and connectors that demonstrate MCP patterns.
 
-### Key Requirements:
+These examples serve as:
+1. Working reference implementations
+2. Templates for users to copy/modify
+3. Integration tests for the template system
 
-1. **Create `base/templates/entrypoint.sh.template`**
+---
 
-2. **Add Shebang and Error Handling**:
+## Task 6.1: Create Example Tool - Summarize
 
-   ```bash
-   #!/bin/bash
-   set -e  # Exit on error
+**Branch**: `task-6.1` from `Phase6`  
+**Goal**: Text summarization tool demonstrating basic MCP tool structure.
+
+### Requirements:
+
+1. **Create `tools/summarize.ts`**
+
+2. **Export Metadata**:
+   ```typescript
+   export const metadata = {
+     name: 'summarize',
+     description: 'Summarize text to specified length',
+     schemaVersion: '1.0'
+   };
    ```
 
-3. **Implement Config File Validation**:
-   - Check if MCP_CONFIG_PATH exists
-   - Validate YAML syntax with Node script
-
-   ```bash
-   if [ -f "$MCP_CONFIG_PATH" ]; then
-     node -e "require('yaml').parse(fs.readFileSync('$MCP_CONFIG_PATH', 'utf8'))"
-   fi
+3. **Define Input Schema**:
+   ```typescript
+   interface SummarizeInput {
+     text: string;           // Required - text to summarize
+     maxLength?: number;     // Optional - default 100
+     style?: 'bullet' | 'paragraph';  // Output format
+   }
    ```
 
-4. **Add Environment Variable Override**:
-   - Load .env file if exists
+4. **Implement Handler**:
+   ```typescript
+   export async function summarize(input: SummarizeInput): Promise<string>
+   ```
+   - Split text into sentences
+   - Extract key sentences
+   - Join up to maxLength
 
-   ```bash
-   if [ -f .env ]; then
-     export $(grep -v '^#' .env | xargs)
-   fi
+5. **Add Validation**:
+   - Check text is non-empty
+   - Validate maxLength is positive
+
+6. **Add JSDoc Documentation**:
+   - `@tool` tag
+   - `@param` descriptions
+   - `@returns` description
+   - `@example` usage
+
+7. **Export Default**:
+   ```typescript
+   export default { metadata, handler: summarize };
    ```
 
-5. **Check Required Variables**:
-   - Verify critical env vars are set
-   - Exit with clear error message if missing
+### Success Criteria:
+- Tool is discovered by loader
+- Validates inputs correctly
+- Produces reasonable summaries
+- Has clear documentation
 
-   ```bash
-   : "${MCP_CONFIG_PATH:?MCP_CONFIG_PATH is required}"
+---
+
+## Task 6.2: Create Example Tool - Translate
+
+**Branch**: `task-6.2` from `Phase6`  
+**Goal**: Translation tool demonstrating credential requirements.
+
+### Requirements:
+
+1. **Create `tools/translate.ts`**
+
+2. **Declare Credential Requirement**:
+   ```typescript
+   credentials: [{
+     name: 'TRANSLATION_API_KEY',
+     type: 'api_key',
+     required: false  // Falls back to mock
+   }]
    ```
 
-6. **Implement Startup Logging**:
-   - Echo "Starting MCP Server..."
-   - Log config location
-   - List loaded tools/connectors
-
-7. **Add Process Management**:
-   - Handle SIGTERM to gracefully stop server
-   - Forward signals to Node.js process
-
-   ```bash
-   trap 'kill -TERM $PID; wait $PID' TERM INT
+3. **Define Input Schema**:
+   ```typescript
+   interface TranslateInput {
+     text: string;
+     targetLanguage: string;
+     sourceLanguage?: string;  // Auto-detect if missing
+   }
    ```
 
-8. **Support Different Run Modes**:
-   - Accept command line arg (dev/prod)
-   - Adjust logging verbosity accordingly
+4. **Implement Handler**:
+   - If API key present → call external API
+   - If no API key → use mock/fallback
 
-   ```bash
-   MODE="${1:-prod}"
-   if [ "$MODE" = "dev" ]; then
-     export LOG_LEVEL=debug
-   fi
+5. **Add Language Detection**:
+   - Auto-detect source language
+
+6. **Include Error Handling**:
+   - Catch API errors
+   - Return user-friendly messages
+
+### Success Criteria:
+- Declares credential requirement
+- Works with/without API key
+- Handles errors gracefully
+- Detects source language
+
+---
+
+## Task 6.3: Create Example Tool - Classify
+
+**Branch**: `task-6.3` from `Phase6`  
+**Goal**: Classification tool demonstrating configurable behavior.
+
+### Requirements:
+
+1. **Create `tools/classify.ts`**
+
+2. **Declare Configuration**:
+   ```typescript
+   config: {
+     categories: string[],
+     confidenceThreshold: number
+   }
    ```
 
-9. **Execute Main Server**:
-   - Replace shell process with Node
-
-   ```bash
-   exec node server.js "$@"
+3. **Define Input Schema**:
+   ```typescript
+   interface ClassifyInput {
+     text: string;
+     categories?: string[];  // Override defaults
+   }
    ```
 
-10. **Create Test File**:
-    - Template structure validation
-    - Script syntax check (bash -n)
-    - Feature verification
+4. **Implement Classification**:
+   - Keyword matching
+   - Regex patterns
+   - Basic scoring
 
-### Quick Start:
+5. **Return Results**:
+   ```typescript
+   interface ClassifyResult {
+     category: string;
+     confidence: number;  // 0-1
+     matches: string[];
+   }
+   ```
+
+### Success Criteria:
+- Classifies text into categories
+- Returns confidence scores
+- Supports custom categories
+- Configurable thresholds
+
+---
+
+## Task 6.4: Create Example Connector - Gmail
+
+**Branch**: `task-6.4` from `Phase6`  
+**Goal**: Gmail connector demonstrating OAuth2 authentication.
+
+### Requirements:
+
+1. **Create `connectors/gmail.ts`**
+
+2. **Declare Authentication**:
+   ```typescript
+   authentication: {
+     type: 'oauth2',
+     scopes: ['gmail.readonly', 'gmail.send']
+   }
+   ```
+
+3. **Declare Credentials**:
+   - GMAIL_CLIENT_ID (required)
+   - GMAIL_CLIENT_SECRET (required)
+   - GMAIL_REFRESH_TOKEN (required)
+
+4. **Implement Operations**:
+   - `listMessages(maxResults)`
+   - `sendEmail(to, subject, body)`
+   - `searchMessages(query)`
+
+5. **Add Rate Limiting**:
+   - Track requests per minute
+   - Respect API limits
+
+6. **Implement Connection Test**:
+   - `testConnection(): Promise<boolean>`
+
+### Success Criteria:
+- Connects to Gmail API
+- Performs email operations
+- Handles OAuth2
+- Respects rate limits
+
+---
+
+## Task 6.5: Create Example Connector - Notion
+
+**Branch**: `task-6.5` from `Phase6`  
+**Goal**: Notion connector demonstrating database operations.
+
+### Requirements:
+
+1. **Create `connectors/notion.ts`**
+
+2. **Declare Authentication**:
+   ```typescript
+   authentication: { type: 'token' }
+   ```
+
+3. **Declare Credentials**:
+   - NOTION_TOKEN (required)
+
+4. **Implement Operations**:
+   - `queryDatabase(databaseId, filter?)`
+   - `createPage(databaseId, properties)`
+   - `updatePage(pageId, properties)`
+   - `getPage(pageId)`
+   - `listDatabases()`
+
+5. **Add Retry Logic**:
+   - Exponential backoff
+   - Handle rate limits
+
+### Success Criteria:
+- Connects to Notion
+- Queries databases
+- Creates/updates pages
+- Handles authentication
+- Respects rate limits
+
+---
+
+## Quick Start (Task 6.1)
 
 ```bash
-git checkout Phase5
-git checkout -b task-5.4
+# Create Phase6 branch from main
+git checkout main
+git checkout -b Phase6
 
-# Create entrypoint.sh.template with all features
-# Create test-entrypoint-template.ts with tests
-npm run build && node dist/test-entrypoint-template.js
+# Create task branch
+git checkout -b task-6.1
 
-# Complete documentation and merge
-git commit -am "Complete Task 5.4 - Entrypoint Script Template"
-git checkout Phase5 && git merge --no-ff task-5.4
-```
+# Create the summarize tool
+# Create test file
+npm run build && node dist/test-summarize.js
 
-### Reference Files:
-
-- Task details: `/workspace/ActionPlan/Phase5/Task4/Task4.md`
-- Checklist: `/workspace/ActionPlan/Phase5/TaskCheckList5.md`
-- Server template: `base/templates/server.ts.template`
-- Tool loader: `base/templates/tool-loader.ts.template`
-- Connector loader: `base/templates/connector-loader.ts.template`
-- Tool loader template: `/workspace/base/templates/tool-loader.ts.template`
-
-### Expected Template Structure:
-
-```typescript
-// {{CONNECTOR_LIST}}
-
-interface Connector {
-  name: string;
-  type: string;
-  isConnected(): boolean;
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  reconnect(): Promise<void>;
-  health(): Promise<boolean>;
-}
-
-interface ConnectorConfig {
-  name: string;
-  type: string;
-  credentials: {
-    type: "oauth" | "api_key" | "basic" | "none";
-    // credential fields
-  };
-  poolSize?: number;
-  timeout?: number;
-  retries?: number;
-  required?: boolean;
-}
-
-class ConnectorRegistry {
-  private connectors = new Map<string, Connector>();
-
-  async register(connector: Connector): Promise<void>;
-  get(name: string): Connector | undefined;
-  list(): Connector[];
-  async connect(name: string): Promise<void>;
-  async disconnect(name: string): Promise<void>;
-  async checkHealth(name: string): Promise<boolean>;
-  async checkAllHealth(): Promise<Record<string, boolean>>;
-}
-
-async function initializeConnector(config: ConnectorConfig): Promise<Connector>;
-async function initializeAllConnectors(
-  configs: ConnectorConfig[]
-): Promise<void>;
+# Complete documentation
+# Commit and merge to Phase6
+git commit -am "Complete Task 6.1 - Summarize Tool"
+git checkout Phase6 && git merge --no-ff task-6.1
 ```
 
 ---
 
-## ⚠️ IMPORTANT: After Completing Task 5.3
+## Reference Files
 
-You MUST complete these steps after finishing the implementation:
-
-1. **Write TaskReview3.md** - Create a review document at `/workspace/ActionPlan/Phase5/Task3/TaskReview3.md`
-
-2. **Update TaskCheckList5.md** - Check off completed items
-
-3. **Write TaskCompleteNote3.md** - Document what was done
-
-4. **Update this WorkNotes.md** - Rewrite with instructions for Task 5.4
+- Task details: `/workspace/ActionPlan/Phase6/Task1/Task1.md`
+- Checklist: `/workspace/ActionPlan/Phase6/TaskCheckList6.md`
+- Tool loader template: `base/templates/tool-loader.ts.template`
+- Connector loader template: `base/templates/connector-loader.ts.template`
+- Existing tools directory: `tools/`
+- Existing connectors directory: `connectors/`
 
 ---
 
-## Phase 5 Progress
+## Phase 6 Progress
 
-1. **Task 5.1**: Create Base Server Template ✅ COMPLETE
-2. **Task 5.2**: Build Tool Integration Template ✅ COMPLETE
-3. **Task 5.3**: Create Connector Integration Template ← YOU ARE HERE
-4. **Task 5.4**: Build Entrypoint Script
+1. **Task 6.1**: Create Example Tool - Summarize ← START HERE
+2. **Task 6.2**: Create Example Tool - Translate
+3. **Task 6.3**: Create Example Tool - Classify
+4. **Task 6.4**: Create Example Connector - Gmail
+5. **Task 6.5**: Create Example Connector - Notion
 
-See full details: `/workspace/ActionPlan/Phase5/TaskCheckList5.md`
+See full details: `/workspace/ActionPlan/Phase6/TaskCheckList6.md`
