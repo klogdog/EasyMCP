@@ -38,7 +38,7 @@ Full details in: `/workspace/ActionPlan/Phase4/Task3/TaskCompleteNote3.md`
 1. **Create `base/registry.ts`** with new function:
 
    ```typescript
-   async function tagImage(imageId: string, tags: string[]): Promise<void>
+   async function tagImage(imageId: string, tags: string[]): Promise<void>;
    ```
 
 2. **Implement tagging strategy**:
@@ -47,12 +47,13 @@ Full details in: `/workspace/ActionPlan/Phase4/Task3/TaskCompleteNote3.md`
    - `mcp-server:{timestamp}` (e.g., 20251126-143022)
 
 3. **Add push functionality**:
+
    ```typescript
    async function pushImage(
-     tag: string, 
-     registry: string, 
+     tag: string,
+     registry: string,
      auth?: RegistryAuth
-   ): Promise<void>
+   ): Promise<void>;
    ```
 
 4. **Registry authentication support**:
@@ -62,13 +63,15 @@ Full details in: `/workspace/ActionPlan/Phase4/Task3/TaskCompleteNote3.md`
    - Auth via config
 
 5. **List local images**:
+
    ```typescript
-   async function listLocalImages(prefix: string): Promise<ImageInfo[]>
+   async function listLocalImages(prefix: string): Promise<ImageInfo[]>;
    ```
 
 6. **Cleanup utility**:
+
    ```typescript
-   async function pruneOldImages(keepCount: number): Promise<void>
+   async function pruneOldImages(keepCount: number): Promise<void>;
    ```
 
 7. **Tag validation**:
@@ -111,29 +114,29 @@ git checkout Phase4 && git merge --no-ff task-4.4
 
 ```typescript
 interface RegistryAuth {
-    username: string;
-    password: string;
-    serveraddress?: string;  // Registry URL
-    email?: string;          // For some registries
+  username: string;
+  password: string;
+  serveraddress?: string; // Registry URL
+  email?: string; // For some registries
 }
 
 interface TagOptions {
-    version?: string;        // Use manifest version
-    timestamp?: boolean;     // Add timestamp tag
-    latest?: boolean;        // Add :latest tag
-    prefix?: string;         // Custom prefix
+  version?: string; // Use manifest version
+  timestamp?: boolean; // Add timestamp tag
+  latest?: boolean; // Add :latest tag
+  prefix?: string; // Custom prefix
 }
 
 interface PushOptions {
-    dryRun?: boolean;        // Preview only
-    onProgress?: (event: PushProgressEvent) => void;
+  dryRun?: boolean; // Preview only
+  onProgress?: (event: PushProgressEvent) => void;
 }
 
 interface PushProgressEvent {
-    status: string;
-    progress?: number;
-    layer?: string;
-    error?: string;
+  status: string;
+  progress?: number;
+  layer?: string;
+  error?: string;
 }
 ```
 
@@ -177,7 +180,7 @@ You MUST complete these steps after finishing the implementation:
 
 ## Next Steps Preview
 
-After completing Task 4.4, Phase 4 will be complete. 
+After completing Task 4.4, Phase 4 will be complete.
 
 The next phase is **Phase 5: Server Runtime**.
 

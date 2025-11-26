@@ -20,13 +20,14 @@ Successfully implemented the MCP Docker image builder functionality in `base/doc
 
 ```typescript
 async function buildMCPImage(
-    manifest: MCPManifest,
-    config: string,
-    options: BuildOptions = {}
-): Promise<string>
+  manifest: MCPManifest,
+  config: string,
+  options: BuildOptions = {}
+): Promise<string>;
 ```
 
 **Features:**
+
 - Creates temporary build context with all required files
 - Generates Dockerfile based on manifest configuration
 - Executes Docker build via DockerClient
@@ -37,17 +38,17 @@ async function buildMCPImage(
 
 ```typescript
 interface BuildOptions {
-    tag?: string;                    // Custom image tag
-    additionalTags?: string[];       // Extra tags
-    buildArgs?: Record<string, string>; // Build arguments
-    target?: string;                 // Multi-stage target
-    noCache?: boolean;               // Skip cache
-    workingDir?: string;             // Build working directory
-    logFile?: string;                // Log file path
-    dockerfileOptions?: DockerfileOptions;
-    onProgress?: (event: BuildProgressEvent) => void;
-    cleanupOnFailure?: boolean;      // Auto cleanup on failure
-    dockerClient?: DockerClient;     // Custom client instance
+  tag?: string; // Custom image tag
+  additionalTags?: string[]; // Extra tags
+  buildArgs?: Record<string, string>; // Build arguments
+  target?: string; // Multi-stage target
+  noCache?: boolean; // Skip cache
+  workingDir?: string; // Build working directory
+  logFile?: string; // Log file path
+  dockerfileOptions?: DockerfileOptions;
+  onProgress?: (event: BuildProgressEvent) => void;
+  cleanupOnFailure?: boolean; // Auto cleanup on failure
+  dockerClient?: DockerClient; // Custom client instance
 }
 ```
 
@@ -55,18 +56,19 @@ interface BuildOptions {
 
 ```typescript
 interface BuildProgressEvent {
-    type: 'step' | 'download' | 'extract' | 'output' | 'error' | 'complete';
-    step?: number;
-    totalSteps?: number;
-    message: string;
-    raw?: string;
-    progress?: number;
-    elapsed: number;
-    timestamp: Date;
+  type: "step" | "download" | "extract" | "output" | "error" | "complete";
+  step?: number;
+  totalSteps?: number;
+  message: string;
+  raw?: string;
+  progress?: number;
+  elapsed: number;
+  timestamp: Date;
 }
 ```
 
 **Progress Streaming:**
+
 - Parses Docker build JSON output
 - Extracts step numbers (e.g., "Step 3/12")
 - Shows download progress percentage
@@ -76,6 +78,7 @@ interface BuildProgressEvent {
 ### 4. Build Context Creation
 
 The `createBuildContext()` helper:
+
 - Creates temporary directory structure
 - Generates and writes Dockerfile
 - Generates .dockerignore
@@ -94,6 +97,7 @@ The `createBuildContext()` helper:
 ### 6. Error Handling & Diagnostics
 
 `parseBuildFailure()` provides:
+
 - Failed step identification
 - Failed instruction extraction
 - Contextual fix suggestions:
@@ -119,15 +123,15 @@ The `createBuildContext()` helper:
 
 ### New Tests Added (Tests 11-17)
 
-| Test # | Name | Description | Status |
-|--------|------|-------------|--------|
-| 11 | Build Options Interface | Verifies BuildOptions typing | ✅ |
-| 12 | Build Progress Event Structure | Tests all event types | ✅ |
-| 13 | Format Build Result | Tests success formatting | ✅ |
-| 14 | Format Build Failure | Tests error formatting | ✅ |
-| 15 | Docker Connectivity Check | Tests DockerClient ping | ✅ |
-| 16 | Build Context Creation | Tests interface exports | ✅ |
-| 17 | Integration Build Test | Full build test (if Docker available) | ✅ |
+| Test # | Name                           | Description                           | Status |
+| ------ | ------------------------------ | ------------------------------------- | ------ |
+| 11     | Build Options Interface        | Verifies BuildOptions typing          | ✅     |
+| 12     | Build Progress Event Structure | Tests all event types                 | ✅     |
+| 13     | Format Build Result            | Tests success formatting              | ✅     |
+| 14     | Format Build Failure           | Tests error formatting                | ✅     |
+| 15     | Docker Connectivity Check      | Tests DockerClient ping               | ✅     |
+| 16     | Build Context Creation         | Tests interface exports               | ✅     |
+| 17     | Integration Build Test         | Full build test (if Docker available) | ✅     |
 
 ### Test Results
 
@@ -162,21 +166,17 @@ Total: 116
 ## Usage Example
 
 ```typescript
-import { buildMCPImage, BuildOptions } from './dockerizer';
+import { buildMCPImage, BuildOptions } from "./dockerizer";
 
-const imageId = await buildMCPImage(
-    manifest,
-    'config/production.yaml',
-    {
-        tag: 'my-mcp-server:1.0.0',
-        onProgress: (event) => {
-            if (event.type === 'step') {
-                console.log(`Step ${event.step}/${event.totalSteps}: ${event.message}`);
-            }
-        },
-        cleanupOnFailure: true
+const imageId = await buildMCPImage(manifest, "config/production.yaml", {
+  tag: "my-mcp-server:1.0.0",
+  onProgress: (event) => {
+    if (event.type === "step") {
+      console.log(`Step ${event.step}/${event.totalSteps}: ${event.message}`);
     }
-);
+  },
+  cleanupOnFailure: true,
+});
 
 console.log(`Built image: ${imageId}`);
 ```
@@ -245,19 +245,20 @@ Log File: /workspace/.build.log
 
 ## Success Criteria Verification
 
-| Criteria | Status |
-|----------|--------|
-| Successfully builds images | ✅ Implemented |
-| Shows real-time progress | ✅ Progress callback with step tracking |
-| Captures logs | ✅ Structured + raw logs written to file |
-| Handles failures gracefully | ✅ Diagnostic info + suggestions |
-| Creates build context | ✅ Temp directory with all files |
-| Returns imageId | ✅ Returns from DockerClient.buildImage |
-| Cleanup on failure | ✅ Configurable cleanupOnFailure option |
+| Criteria                    | Status                                   |
+| --------------------------- | ---------------------------------------- |
+| Successfully builds images  | ✅ Implemented                           |
+| Shows real-time progress    | ✅ Progress callback with step tracking  |
+| Captures logs               | ✅ Structured + raw logs written to file |
+| Handles failures gracefully | ✅ Diagnostic info + suggestions         |
+| Creates build context       | ✅ Temp directory with all files         |
+| Returns imageId             | ✅ Returns from DockerClient.buildImage  |
+| Cleanup on failure          | ✅ Configurable cleanupOnFailure option  |
 
 ---
 
 ## Next Steps
 
 Task 4.4: Implement Image Tagging & Registry
+
 - See `/workspace/ActionPlan/Phase4/Task4/Task4.md`

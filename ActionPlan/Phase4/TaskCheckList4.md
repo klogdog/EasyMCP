@@ -19,7 +19,6 @@ This phase focuses on docker integration.
 - [x] Implement streaming: use dockerode streams API for build progress, parse JSON progress messages
 - [x] **Success Criteria**: Connects to Docker; builds images successfully; streams progress; handles errors gracefully
 
-
 ### Task 4.2: Build Dockerfile Generator
 
 - [x] Create `base/dockerizer.ts` with `async function generateDockerfile(manifest: MCPManifest, config: string): Promise<string>`
@@ -34,7 +33,6 @@ This phase focuses on docker integration.
 - [x] Return complete Dockerfile as string
 - [x] **Success Criteria**: Generates valid Dockerfile; includes all dependencies; supports both Node and Python
 
-
 ### Task 4.3: Create Image Builder
 
 - [x] Extend `dockerizer.ts` with `async function buildMCPImage(manifest: MCPManifest, config: string, options: BuildOptions): Promise<string>`
@@ -48,7 +46,6 @@ This phase focuses on docker integration.
 - [x] Return imageId on success
 - [x] **Success Criteria**: Successfully builds images; shows real-time progress; captures logs; handles failures gracefully
 
-
 ### Task 4.4: Implement Image Tagging & Registry
 
 - [ ] Create `base/registry.ts` with `async function tagImage(imageId: string, tags: string[]): Promise<void>`
@@ -60,4 +57,3 @@ This phase focuses on docker integration.
 - [ ] Implement tag validation: ensure tags follow Docker naming conventions, handle special characters
 - [ ] Add dry-run mode for push operations
 - [ ] **Success Criteria**: Tags images with version/timestamp; can push to registry; cleans up old images
-
