@@ -110,11 +110,11 @@ export class SecretManager {
 
         try {
             const [ivHex, encryptedData, authTagHex] = parts;
-            
+
             if (ivHex === undefined || encryptedData === undefined || authTagHex === undefined) {
                 throw new Error("Invalid encrypted data format: missing components");
             }
-            
+
             const iv = Buffer.from(ivHex, "hex");
             const authTag = Buffer.from(authTagHex, "hex");            // Validate IV length
             if (iv.length !== this.ivLength) {

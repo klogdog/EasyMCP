@@ -23,21 +23,25 @@ Implemented complete secret management system with the following components:
 
 ```typescript
 export class SecretManager {
-    constructor(keyString: string)
-    static generateKey(): string
-    encrypt(value: string): string
-    decrypt(encrypted: string): string
-    toEnvironmentVariables(secrets: Record<string, string>): string[]
-    injectIntoConfig(config: string, secrets: Record<string, string>): string
-    maskSecrets(secrets: Record<string, string>): Record<string, string>
-    async saveEncrypted(secrets: Record<string, string>, filepath?: string): Promise<void>
-    async loadEncrypted(filepath?: string): Promise<Record<string, string>>
+  constructor(keyString: string);
+  static generateKey(): string;
+  encrypt(value: string): string;
+  decrypt(encrypted: string): string;
+  toEnvironmentVariables(secrets: Record<string, string>): string[];
+  injectIntoConfig(config: string, secrets: Record<string, string>): string;
+  maskSecrets(secrets: Record<string, string>): Record<string, string>;
+  async saveEncrypted(
+    secrets: Record<string, string>,
+    filepath?: string
+  ): Promise<void>;
+  async loadEncrypted(filepath?: string): Promise<Record<string, string>>;
 }
 ```
 
 #### Key Features
 
 **AES-256-GCM Encryption**:
+
 - Uses Node.js built-in `crypto` module
 - 256-bit encryption with authenticated encryption mode
 - Random 16-byte IV generated for each encryption
@@ -45,26 +49,31 @@ export class SecretManager {
 - Format: `iv:encryptedData:authTag` (all hex-encoded)
 
 **Key Derivation**:
+
 - Input key string hashed with SHA-256 to derive 32-byte key
 - Consistent key derivation from any input length
 - Static `generateKey()` method for secure random key generation
 
 **Environment Variable Conversion**:
+
 - Converts `camelCase` to `SCREAMING_SNAKE_CASE`
 - Converts `kebab-case` to `SCREAMING_SNAKE_CASE`
 - Returns array of `KEY=value` strings
 
 **Config Template Injection**:
+
 - Replaces `${VAR_NAME}` placeholders with actual values
 - Replaces `${VAR_NAME:-default}` placeholders with actual values
 - Preserves unmatched placeholders
 
 **Secret Masking**:
+
 - Shows first 2 and last 2 characters: `ab****xy`
 - Values ≤4 characters show as `****`
 - Returns new object (doesn't modify original)
 
 **File Storage**:
+
 - Saves encrypted JSON to `.secrets.encrypted` by default
 - Creates directories if they don't exist
 - Loads and decrypts secrets from file
@@ -73,16 +82,16 @@ export class SecretManager {
 
 Created `base/test-secrets.ts` with 8 test scenarios:
 
-| Test | Description | Status |
-|------|-------------|--------|
-| Test 1 | Encryption and Decryption | ✅ PASSED |
-| Test 2 | Key Generation | ✅ PASSED |
-| Test 3 | Random IV per Encryption | ✅ PASSED |
+| Test   | Description                     | Status    |
+| ------ | ------------------------------- | --------- |
+| Test 1 | Encryption and Decryption       | ✅ PASSED |
+| Test 2 | Key Generation                  | ✅ PASSED |
+| Test 3 | Random IV per Encryption        | ✅ PASSED |
 | Test 4 | Environment Variable Conversion | ✅ PASSED |
-| Test 5 | Config Template Injection | ✅ PASSED |
-| Test 6 | Secret Masking | ✅ PASSED |
-| Test 7 | File Storage (Save and Load) | ✅ PASSED |
-| Test 8 | Error Handling | ✅ PASSED |
+| Test 5 | Config Template Injection       | ✅ PASSED |
+| Test 6 | Secret Masking                  | ✅ PASSED |
+| Test 7 | File Storage (Save and Load)    | ✅ PASSED |
+| Test 8 | Error Handling                  | ✅ PASSED |
 
 ### Test Results
 
@@ -142,8 +151,8 @@ const decrypted = manager.decrypt(encrypted);
 
 // Convert to environment variables
 const envVars = manager.toEnvironmentVariables({
-    apiKey: "secret-key",
-    dbPassword: "db-pass"
+  apiKey: "secret-key",
+  dbPassword: "db-pass",
 });
 // ["API_KEY=secret-key", "DB_PASSWORD=db-pass"]
 
@@ -162,6 +171,7 @@ const loaded = await manager.loadEncrypted(".secrets.encrypted");
 ## Integration Notes
 
 This secret manager integrates with:
+
 - **Task 3.1 (Prompt System)**: Collects credentials that are then encrypted
 - **Task 2.4 (Config Generator)**: Injects secrets into generated YAML configs
 - **Docker builds**: Encrypted file safe for build context
