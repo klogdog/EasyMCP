@@ -20,7 +20,6 @@ This phase focuses on example tools & connectors.
 - [x] Export default: `export default { metadata, handler: summarize }`
 - [x] **Success Criteria**: Tool is discovered by loader; validates inputs; produces summaries; has clear documentation
 
-
 ### Task 6.2: Create Example Tool - Translate ✅ COMPLETE (28 tests passing)
 
 - [x] Create `tools/translate.ts` following MCP tool pattern
@@ -32,7 +31,6 @@ This phase focuses on example tools & connectors.
 - [x] Add error handling: catch API errors, return user-friendly messages
 - [x] Include example usage in JSDoc with different language pairs
 - [x] **Success Criteria**: Tool declares credential requirement; works with/without API key; handles errors; detects language
-
 
 ### Task 6.3: Create Example Tool - Classify ✅ COMPLETE (31 tests passing)
 
@@ -46,7 +44,6 @@ This phase focuses on example tools & connectors.
 - [x] Include examples of different use cases: sentiment, topic classification, intent detection
 - [x] **Success Criteria**: Classifies text into categories; returns confidence scores; supports custom categories; configurable
 
-
 ### Task 6.4: Create Example Connector - Gmail ✅ COMPLETE (39 tests passing)
 
 - [x] Create `connectors/gmail.ts` following connector pattern
@@ -58,7 +55,6 @@ This phase focuses on example tools & connectors.
 - [x] Add connection test: `async testConnection(): Promise<boolean>` that verifies credentials
 - [x] Include error handling: handle token expiration, quota exceeded, network errors
 - [x] **Success Criteria**: Connects to Gmail API; performs email operations; handles OAuth2; respects rate limits
-
 
 ### Task 6.5: Create Example Connector - Notion ✅ COMPLETE (43 tests passing)
 
@@ -74,12 +70,11 @@ This phase focuses on example tools & connectors.
 
 ## Summary
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 6.1 | Summarize Tool | 21 |
-| 6.2 | Translate Tool | 28 |
-| 6.3 | Classify Tool | 31 |
-| 6.4 | Gmail Connector | 39 |
-| 6.5 | Notion Connector | 43 |
-| **Total** | | **162** |
-
+| Task      | Description      | Tests   |
+| --------- | ---------------- | ------- |
+| 6.1       | Summarize Tool   | 21      |
+| 6.2       | Translate Tool   | 28      |
+| 6.3       | Classify Tool    | 31      |
+| 6.4       | Gmail Connector  | 39      |
+| 6.5       | Notion Connector | 43      |
+| **Total** |                  | **162** |
