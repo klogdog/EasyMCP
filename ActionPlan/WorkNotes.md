@@ -1,63 +1,75 @@
 ## Create a new git branch for the task from Phase3 and merge back into Phase3 when finished
 
-# Work Notes - Task 3.3: Create Credential Schema Discovery
+# Work Notes - Task 4.1: Implement Docker Client Wrapper
 
 ## Current Status
 
-**Task 3.2 (Build Secret Manager)** has been **COMPLETED** ✅
+**Phase 3 (User Interaction & Secrets)** has been **COMPLETED** ✅
 
-### What Was Done in Task 3.2
+### Phase 3 Completion Summary
 
-The previous agent successfully completed all requirements for the secret manager.
+All three tasks in Phase 3 are complete:
 
-**Key accomplishments:**
-- ✅ Created `base/secrets.ts` with SecretManager class
-- ✅ Implemented AES-256-GCM encryption/decryption with random IVs
-- ✅ Added generateKey() for secure key generation
-- ✅ Implemented toEnvironmentVariables() with SCREAMING_SNAKE_CASE conversion
-- ✅ Implemented injectIntoConfig() for ${VAR} placeholder replacement
-- ✅ Added maskSecrets() for safe logging (ab****xy format)
-- ✅ Implemented saveEncrypted/loadEncrypted for file storage
-- ✅ Created comprehensive test suite with 8 test scenarios - all passing
-- ✅ Updated documentation and merged to Phase3
+1. **Task 3.1 - Interactive Prompt System** ✅
+   - `base/prompt.ts` with inquirer integration
+   - 6 validation functions, password masking, env var defaults
+   - 8 tests passing
 
-Full details in: `/workspace/ActionPlan/Phase3/Task2/TaskCompleteNote2.md`
+2. **Task 3.2 - Secret Manager** ✅
+   - `base/secrets.ts` with AES-256-GCM encryption
+   - Encrypt/decrypt, file storage, config injection
+   - 8 tests passing
 
-## Your Task: Task 3.3 - Create Credential Schema Discovery
+3. **Task 3.3 - Credential Schema Discovery** ✅
+   - `base/credential-discovery.ts` with metadata/JSDoc/docstring parsing
+   - Aggregation, merging, grouping utilities
+   - 8 tests passing (48 assertions)
 
-**Goal**: Automatically discover credential requirements from module metadata and code comments.
+## Your Task: Task 4.1 - Implement Docker Client Wrapper
+
+**Goal**: Create abstraction layer for Docker operations using dockerode.
 
 ### Key Requirements:
 
-1. Extend `loader.ts` to parse credential requirements from module metadata
-2. Look for `metadata.credentials` field in each module
-3. Parse TypeScript JSDoc comments for `@requires-credential` tags
-4. Parse Python docstrings for `:credential` directives
-5. Aggregate requirements across modules (merge duplicates)
-6. Build CredentialRequirement array with metadata
-7. Handle optional vs required credentials
-8. Create type definitions for CredentialRequirement
+1. **Install dockerode dependency**
+   ```bash
+   npm install dockerode @types/dockerode
+   ```
 
-See full implementation details in:
-- `/workspace/ActionPlan/Phase3/Task3/Task3.md`
-- `/workspace/ActionPlan/Phase3/TaskCheckList3.md`
+2. **Create `base/docker-client.ts`** with class DockerClient:
+   - Initialize with Docker socket or DOCKER_HOST env
+   - `ping(): Promise<boolean>` - verify daemon connectivity
+   - `buildImage(context, dockerfile, tag, onProgress?)` - build images with streaming
+   - `listImages(filter?)` - list local images
+   - `removeImage(imageId)` - cleanup images
+   - `createContainer(config)` - create containers
+   - `startContainer(id)` - start containers
+
+3. **Error handling**:
+   - Wrap Docker errors with descriptive messages
+   - Detect "daemon not running" errors
+   - Handle connection timeouts
+
+4. **Streaming support**:
+   - Use dockerode streams API for build progress
+   - Parse JSON progress messages
+   - Real-time progress callbacks
 
 ### Quick Start:
 
 ```bash
 git checkout Phase3
-git checkout -b task-3.3
-# Extend base/loader.ts with credential discovery
-# Create comprehensive tests
-npm run build && node dist/test-loader.js
-# Update documentation
-git commit -am "Complete Task 3.3"
-git checkout Phase3 && git merge --no-ff task-3.3
-# Update WorkNotes.md for next phase
+git checkout -b task-4.1
+npm install dockerode @types/dockerode
+# Create base/docker-client.ts
+# Create base/test-docker-client.ts
+npm run build && node dist/test-docker-client.js
+git commit -am "Complete Task 4.1"
+git checkout Phase3 && git merge --no-ff task-4.1
 ```
 
 ### Reference Files:
-- Prompt system: `/workspace/base/prompt.ts`
-- Secret manager: `/workspace/base/secrets.ts`
-- Current loader: `/workspace/base/loader.ts`
-- Checklist: `/workspace/ActionPlan/Phase3/TaskCheckList3.md`
+
+- Task details: `/workspace/ActionPlan/Phase4/Task1/Task1.md`
+- Checklist: `/workspace/ActionPlan/Phase4/TaskCheckList4.md`
+- Previous work: `/workspace/ActionPlan/Phase3/Task3/TaskCompleteNote3.md`
