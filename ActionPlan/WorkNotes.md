@@ -1,102 +1,113 @@
 ## Create a new git branch for the task from Phase4 and merge back into Phase4 when finished
 
-# Work Notes - Task 4.1: Implement Docker Client Wrapper
+# Work Notes - Task 4.2: Build Dockerfile Generator
 
 ## Current Status
 
-**Phase 3 (Credential Management)** has been **COMPLETED** ✅
+**Task 4.1 (Implement Docker Client Wrapper)** has been **COMPLETED** ✅
 
-### Phase 3 Completion Summary
+### What Was Done in Task 4.1
 
-All three tasks in Phase 3 are complete with TaskReviews approved:
+The previous agent successfully completed all requirements for the Docker client wrapper.
 
-1. **Task 3.1 - Interactive Prompt System** ✅
-   - `base/prompt.ts` with inquirer integration
-   - 6 validation functions, password masking, env var defaults
-   - 8 tests passing
-   - Review: APPROVED (see TaskReview1.md)
+**Key accomplishments:**
 
-2. **Task 3.2 - Secret Manager** ✅
-   - `base/secrets.ts` with AES-256-GCM encryption
-   - Encrypt/decrypt, file storage, config injection
-   - 8 tests passing
-   - Review: APPROVED (see TaskReview2.md)
+- ✅ Created `base/docker-client.ts` with `DockerClient` class (945 lines)
+- ✅ Implemented `ping()`, `buildImage()`, `listImages()`, `removeImage()`
+- ✅ Implemented `createContainer()`, `startContainer()`, `stopContainer()`, `removeContainer()`
+- ✅ Added streaming support for build progress with `ProgressCallback`
+- ✅ Custom error classes: `DockerError`, `DockerDaemonNotRunningError`, `DockerImageError`, `DockerContainerError`, `DockerBuildError`
+- ✅ Installed dependencies: `dockerode`, `@types/dockerode`, `tar-fs`, `@types/tar-fs`
+- ✅ Created comprehensive test suite with 29 tests - all passing
+- ✅ Merged to Phase4
 
-3. **Task 3.3 - Credential Schema Discovery** ✅
-   - `base/credential-discovery.ts` with metadata/JSDoc/docstring parsing
-   - Aggregation, merging, grouping utilities
-   - 8 tests passing (48 assertions)
-   - Review: APPROVED (see TaskReview3.md)
+Full details in: `/workspace/ActionPlan/Phase4/Task1/TaskCompleteNote1.md` (to be created)
 
 ---
 
-## Your Task: Task 4.1 - Implement Docker Client Wrapper
+## Your Task: Task 4.2 - Build Dockerfile Generator
 
 **Phase**: Phase 4 - Docker Integration  
-**Goal**: Create abstraction layer for Docker operations using dockerode.
+**Goal**: Dynamically generate Dockerfile for the MCP server based on loaded modules.
 
 ### Key Requirements:
 
-1. **Install dockerode dependency**
-   ```bash
-   npm install dockerode @types/dockerode
+1. **Create `base/dockerizer.ts`** with main function:
+
+   ```typescript
+   async function generateDockerfile(
+     manifest: MCPManifest,
+     config: string
+   ): Promise<string>;
    ```
 
-2. **Create `base/docker-client.ts`** with class DockerClient:
-   - Initialize with Docker socket or DOCKER_HOST env
-   - `ping(): Promise<boolean>` - verify daemon connectivity
-   - `buildImage(context, dockerfile, tag, onProgress?)` - build images with streaming
-   - `listImages(filter?)` - list local images
-   - `removeImage(imageId)` - cleanup images
-   - `createContainer(config)` - create containers
-   - `startContainer(id)` - start containers
+2. **Base image selection logic**:
+   - `node:20-alpine` - if only TypeScript tools
+   - `python:3.11-slim` - if Python modules only
+   - Multi-stage build - if both Node and Python are needed
 
-3. **Error handling**:
-   - Wrap Docker errors with descriptive messages
-   - Detect "daemon not running" errors
-   - Handle connection timeouts
+3. **Runtime dependencies**:
+   - Install npm packages from manifest.dependencies
+   - Install Python packages from requirements
 
-4. **Streaming support**:
-   - Use dockerode streams API for build progress
-   - Parse JSON progress messages
-   - Real-time progress callbacks
+4. **Generate COPY instructions**:
+   - Copy all tool files from `/tools`
+   - Copy connector files from `/connectors`
+   - Copy generated manifest
 
-5. **Create `base/test-docker-client.ts`** with comprehensive tests
+5. **Working directory structure**:
+   - `/app` - main application directory
+   - `/app/tools` - tool files
+   - `/app/connectors` - connector files
+   - `/app/config` - configuration files
+
+6. **Config setup**:
+   - `COPY config.yaml /app/config/config.yaml`
+   - Make config overridable via volume mount
+
+7. **Environment variables**:
+   - `NODE_ENV=production`
+   - `MCP_CONFIG_PATH=/app/config/config.yaml`
+
+8. **ENTRYPOINT and CMD**:
+   - `ENTRYPOINT ["node", "server.js"]`
+   - Add health check
+
+9. **Metadata labels**:
+   - version
+   - build date
+   - tool list
+
+10. **Create `base/test-dockerizer.ts`** with comprehensive tests
 
 ### Quick Start:
 
 ```bash
-# Create Phase4 branch from Phase3 if it doesn't exist
-git checkout Phase3
-git checkout -b Phase4  # or: git checkout Phase4
+git checkout Phase4
+git checkout -b task-4.2
 
-# Create task branch
-git checkout -b task-4.1
-
-# Install dependencies
-npm install dockerode @types/dockerode
-
-# Create base/docker-client.ts
-# Create base/test-docker-client.ts
-npm run build && node dist/test-docker-client.js
+# Create base/dockerizer.ts with generateDockerfile function
+# Create base/test-dockerizer.ts with tests
+npm run build && node dist/test-dockerizer.js
 
 # Complete documentation and merge
-git commit -am "Complete Task 4.1 - Docker Client Wrapper"
-git checkout Phase4 && git merge --no-ff task-4.1
+git commit -am "Complete Task 4.2 - Dockerfile Generator"
+git checkout Phase4 && git merge --no-ff task-4.2
 ```
 
 ### Reference Files:
 
-- Task details: `/workspace/ActionPlan/Phase4/Task1/Task1.md`
+- Task details: `/workspace/ActionPlan/Phase4/Task2/Task2.md`
 - Checklist: `/workspace/ActionPlan/Phase4/TaskCheckList4.md`
+- Docker client (use for reference): `base/docker-client.ts`
 
 ---
 
-## ⚠️ IMPORTANT: After Completing Task 4.1
+## ⚠️ IMPORTANT: After Completing Task 4.2
 
 You MUST complete these steps after finishing the implementation:
 
-1. **Write TaskReview1.md** - Create a review document at `/workspace/ActionPlan/Phase4/Task1/TaskReview1.md`
+1. **Write TaskReview2.md** - Create a review document at `/workspace/ActionPlan/Phase4/Task2/TaskReview2.md`
    - Include code review (analyze implementation quality)
    - Include test review (verify all tests pass)
    - Include success criteria verification
@@ -104,25 +115,14 @@ You MUST complete these steps after finishing the implementation:
 
 2. **Update TaskCheckList4.md** - Check off completed items in `/workspace/ActionPlan/Phase4/TaskCheckList4.md`
 
-3. **Write TaskCompleteNote1.md** - Document what was done at `/workspace/ActionPlan/Phase4/Task1/TaskCompleteNote1.md`
+3. **Write TaskCompleteNote2.md** - Document what was done at `/workspace/ActionPlan/Phase4/Task2/TaskCompleteNote2.md`
 
-4. **Update this WorkNotes.md** - Rewrite with instructions for Task 4.2 for the next agent
+4. **Update this WorkNotes.md** - Rewrite with instructions for Task 4.3 for the next agent
 
 ---
 
-## Next Task Preview: Task 4.2 - Build Dockerfile Generator
+## Next Task Preview: Task 4.3 - Implement Container Runner
 
-After completing Task 4.1, rewrite this file with instructions for Task 4.2:
+After completing Task 4.2, rewrite this file with instructions for Task 4.3.
 
-**Goal**: Dynamically generate Dockerfile for the MCP server based on loaded modules.
-
-Key requirements:
-- Create `base/dockerizer.ts` with `generateDockerfile(manifest, config)` function
-- Base image selection: `node:20-alpine` for TS-only, `python:3.11-slim` for Python, multi-stage if both
-- Generate COPY instructions for tools, connectors, config
-- Set environment variables: NODE_ENV=production, MCP_CONFIG_PATH
-- Define ENTRYPOINT and CMD with health check
-- Add metadata labels: version, build date, tool list
-- Return complete Dockerfile as string
-
-See full details: `/workspace/ActionPlan/Phase4/Task2/Task2.md`
+See full details: `/workspace/ActionPlan/Phase4/Task3/Task3.md`
