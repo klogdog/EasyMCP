@@ -15,12 +15,14 @@ Created comprehensive configuration schema definition for MCP servers in both YA
 ## Schema Sections Defined
 
 ### Core Sections
+
 - **server**: name, version, host, port, cors, maxRequestSize
 - **database**: type (postgres/sqlite/mysql), url, pool settings, timeout
 - **logging**: level, format, destination, filePath, rotation settings
 - **features**: Feature flags (boolean toggles)
 
 ### Advanced Sections
+
 - **services**: External service integrations (apiKey, endpoint, timeout, rateLimit)
 - **connectors**: Connector configurations (type, enabled, credentials, settings)
 - **security**: authentication, tls, rateLimit
@@ -44,6 +46,7 @@ Failed: 0
 ```
 
 **Success Criteria Met**: ✅
+
 - Complete schema covering all config options
 - Both YAML and JSON Schema versions
 - Well-documented with examples
