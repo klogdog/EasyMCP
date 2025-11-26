@@ -1,103 +1,121 @@
 ## Create a new git branch for the task from Phase5 and merge back into Phase5 when finished
 
-# Work Notes - Task 5.3: Create Connector Integration Template
+# Work Notes - Task 5.4: Build Entrypoint Script
 
 ## Current Status
 
-**Task 5.2 (Tool Integration Template)** is now **COMPLETE** ✅
+**Task 5.3 (Connector Integration Template)** is now **COMPLETE** ✅
 
-### What Was Completed in Task 5.2
+### What Was Completed in Task 5.3
 
-- Created `base/templates/tool-loader.ts.template` (520+ lines)
-- ToolRegistry class with Map storage and lifecycle management
-- Dynamic import logic for loading tools from manifest
-- Tool invocation router with timeout support
-- JSON Schema validator (SchemaValidator class)
-- Error handling with specific error codes
-- onLoad/onUnload lifecycle hooks
-- Batch invocation support (invokeToolsBatch)
-- 68 passing tests in test-tool-loader.ts
+- Created `base/templates/connector-loader.ts.template` (~963 lines)
+- ConnectorRegistry class with Map storage and health tracking
+- Connection pooling with ConnectionPool<T> class
+- Credential injection (OAuth, API key, basic, bearer, none)
+- Health check system with HealthCheckResult interface
+- Retry logic with exponential backoff and jitter
+- Connection lifecycle (connect, disconnect, reconnect)
+- Graceful degradation for optional connectors
+- 84 passing tests in test-connector-loader.ts
 
-Full details in: `/workspace/ActionPlan/Phase5/Task2/TaskCompleteNote2.md`
+Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 
 ---
 
-## Your Task: Task 5.3 - Create Connector Integration Template
+## Your Task: Task 5.4 - Build Entrypoint Script
 
 **Phase**: Phase 5 - MCP Server Templates  
-**Goal**: Template for initializing external service connectors with credentials from config.
+**Goal**: Create a bash script template for container/server startup.
 
 ### Key Requirements:
 
-1. **Create `base/templates/connector-loader.ts.template`**
+1. **Create `base/templates/entrypoint.sh.template`**
 
-2. **Implement ConnectorRegistry Class**:
-   - Similar to ToolRegistry but with connection management
-   - Track connection state (connected/disconnected)
-   - Manage connection pools
-
-3. **Add Connector Initialization**:
-
-   ```typescript
-   async function initializeConnector(
-     config: ConnectorConfig
-   ): Promise<Connector>;
+2. **Add Shebang and Error Handling**:
+   ```bash
+   #!/bin/bash
+   set -e  # Exit on error
    ```
 
-   - Read credentials from config
-   - Create client instance
-
-4. **Implement Credential Injection**:
-   - Read from `config.services[connectorName]`
-   - Support OAuth, API keys, basic auth
-
-5. **Add Connection Pooling**:
-   - Maintain pool of active connections
-   - Reuse for multiple requests
-   - Handle connection timeouts
-
-6. **Create Health Check System**:
-
-   ```typescript
-   async function checkConnectorHealth(name: string): Promise<boolean>;
+3. **Implement Config File Validation**:
+   - Check if MCP_CONFIG_PATH exists
+   - Validate YAML syntax with Node script
+   ```bash
+   if [ -f "$MCP_CONFIG_PATH" ]; then
+     node -e "require('yaml').parse(fs.readFileSync('$MCP_CONFIG_PATH', 'utf8'))"
+   fi
    ```
 
-   - Ping each service
-   - Report health status
+4. **Add Environment Variable Override**:
+   - Load .env file if exists
+   ```bash
+   if [ -f .env ]; then
+     export $(grep -v '^#' .env | xargs)
+   fi
+   ```
 
-7. **Implement Retry Logic**:
-   - Exponential backoff for failed connections
-   - Configurable max retries
+5. **Check Required Variables**:
+   - Verify critical env vars are set
+   - Exit with clear error message if missing
+   ```bash
+   : "${MCP_CONFIG_PATH:?MCP_CONFIG_PATH is required}"
+   ```
 
-8. **Add Connection Lifecycle**:
-   - `connect()`, `disconnect()`, `reconnect()` methods
+6. **Implement Startup Logging**:
+   - Echo "Starting MCP Server..."
+   - Log config location
+   - List loaded tools/connectors
 
-9. **Include Graceful Degradation**:
-   - If connector fails to initialize, log warning but continue
-   - Unless marked as required
+7. **Add Process Management**:
+   - Handle SIGTERM to gracefully stop server
+   - Forward signals to Node.js process
+   ```bash
+   trap 'kill -TERM $PID; wait $PID' TERM INT
+   ```
 
-10. **Add Placeholder**:
-    - `{{CONNECTOR_LIST}}` for code generation
+8. **Support Different Run Modes**:
+   - Accept command line arg (dev/prod)
+   - Adjust logging verbosity accordingly
+   ```bash
+   MODE="${1:-prod}"
+   if [ "$MODE" = "dev" ]; then
+     export LOG_LEVEL=debug
+   fi
+   ```
+
+9. **Execute Main Server**:
+   - Replace shell process with Node
+   ```bash
+   exec node server.js "$@"
+   ```
+
+10. **Create Test File**:
+    - Template structure validation
+    - Script syntax check (bash -n)
+    - Feature verification
 
 ### Quick Start:
 
 ```bash
 git checkout Phase5
-git checkout -b task-5.3
+git checkout -b task-5.4
 
-# Create connector-loader.ts.template with all features
-# Create test-connector-loader.ts with tests
-npm run build && node dist/test-connector-loader.js
+# Create entrypoint.sh.template with all features
+# Create test-entrypoint-template.ts with tests
+npm run build && node dist/test-entrypoint-template.js
 
 # Complete documentation and merge
-git commit -am "Complete Task 5.3 - Connector Integration Template"
-git checkout Phase5 && git merge --no-ff task-5.3
+git commit -am "Complete Task 5.4 - Entrypoint Script Template"
+git checkout Phase5 && git merge --no-ff task-5.4
 ```
 
 ### Reference Files:
 
-- Task details: `/workspace/ActionPlan/Phase5/Task3/Task3.md`
+- Task details: `/workspace/ActionPlan/Phase5/Task4/Task4.md`
 - Checklist: `/workspace/ActionPlan/Phase5/TaskCheckList5.md`
+- Server template: `base/templates/server.ts.template`
+- Tool loader: `base/templates/tool-loader.ts.template`
+- Connector loader: `base/templates/connector-loader.ts.template`
 - Tool loader template: `/workspace/base/templates/tool-loader.ts.template`
 
 ### Expected Template Structure:
