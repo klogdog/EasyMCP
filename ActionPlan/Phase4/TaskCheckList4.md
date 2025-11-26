@@ -48,12 +48,12 @@ This phase focuses on docker integration.
 
 ### Task 4.4: Implement Image Tagging & Registry
 
-- [ ] Create `base/registry.ts` with `async function tagImage(imageId: string, tags: string[]): Promise<void>`
-- [ ] Implement tagging strategy: use `mcp-server:latest`, `mcp-server:v{version}`, `mcp-server:{timestamp}`
-- [ ] Add `async function pushImage(tag: string, registry: string, auth?: RegistryAuth): Promise<void>` using dockerode
-- [ ] Implement registry authentication: support Docker Hub, GitHub Container Registry, private registries via auth config
-- [ ] Create `async function listLocalImages(prefix: string): Promise<ImageInfo[]>` to show available MCP images
-- [ ] Add cleanup utility: `async function pruneOldImages(keepCount: number): Promise<void>` to remove old builds
-- [ ] Implement tag validation: ensure tags follow Docker naming conventions, handle special characters
-- [ ] Add dry-run mode for push operations
-- [ ] **Success Criteria**: Tags images with version/timestamp; can push to registry; cleans up old images
+- [x] Create `base/registry.ts` with `async function tagImage(imageId: string, tags: string[]): Promise<void>`
+- [x] Implement tagging strategy: use `mcp-server:latest`, `mcp-server:v{version}`, `mcp-server:{timestamp}`
+- [x] Add `async function pushImage(tag: string, registry: string, auth?: RegistryAuth): Promise<void>` using dockerode
+- [x] Implement registry authentication: support Docker Hub, GitHub Container Registry, private registries via auth config
+- [x] Create `async function listLocalImages(prefix: string): Promise<ImageInfo[]>` to show available MCP images
+- [x] Add cleanup utility: `async function pruneOldImages(keepCount: number): Promise<void>` to remove old builds
+- [x] Implement tag validation: ensure tags follow Docker naming conventions, handle special characters
+- [x] Add dry-run mode for push operations
+- [x] **Success Criteria**: Tags images with version/timestamp; can push to registry; cleans up old images
