@@ -37,11 +37,13 @@ Full details in: `/workspace/ActionPlan/Phase5/Task2/TaskCompleteNote2.md`
    - Manage connection pools
 
 3. **Add Connector Initialization**:
+
    ```typescript
    async function initializeConnector(
      config: ConnectorConfig
-   ): Promise<Connector>
+   ): Promise<Connector>;
    ```
+
    - Read credentials from config
    - Create client instance
 
@@ -55,9 +57,11 @@ Full details in: `/workspace/ActionPlan/Phase5/Task2/TaskCompleteNote2.md`
    - Handle connection timeouts
 
 6. **Create Health Check System**:
+
    ```typescript
-   async function checkConnectorHealth(name: string): Promise<boolean>
+   async function checkConnectorHealth(name: string): Promise<boolean>;
    ```
+
    - Ping each service
    - Report health status
 
@@ -115,7 +119,7 @@ interface ConnectorConfig {
   name: string;
   type: string;
   credentials: {
-    type: 'oauth' | 'api_key' | 'basic' | 'none';
+    type: "oauth" | "api_key" | "basic" | "none";
     // credential fields
   };
   poolSize?: number;
@@ -126,7 +130,7 @@ interface ConnectorConfig {
 
 class ConnectorRegistry {
   private connectors = new Map<string, Connector>();
-  
+
   async register(connector: Connector): Promise<void>;
   get(name: string): Connector | undefined;
   list(): Connector[];
@@ -137,7 +141,9 @@ class ConnectorRegistry {
 }
 
 async function initializeConnector(config: ConnectorConfig): Promise<Connector>;
-async function initializeAllConnectors(configs: ConnectorConfig[]): Promise<void>;
+async function initializeAllConnectors(
+  configs: ConnectorConfig[]
+): Promise<void>;
 ```
 
 ---
