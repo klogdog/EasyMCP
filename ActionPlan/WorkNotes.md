@@ -32,6 +32,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 1. **Create `base/templates/entrypoint.sh.template`**
 
 2. **Add Shebang and Error Handling**:
+
    ```bash
    #!/bin/bash
    set -e  # Exit on error
@@ -40,6 +41,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 3. **Implement Config File Validation**:
    - Check if MCP_CONFIG_PATH exists
    - Validate YAML syntax with Node script
+
    ```bash
    if [ -f "$MCP_CONFIG_PATH" ]; then
      node -e "require('yaml').parse(fs.readFileSync('$MCP_CONFIG_PATH', 'utf8'))"
@@ -48,6 +50,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 
 4. **Add Environment Variable Override**:
    - Load .env file if exists
+
    ```bash
    if [ -f .env ]; then
      export $(grep -v '^#' .env | xargs)
@@ -57,6 +60,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 5. **Check Required Variables**:
    - Verify critical env vars are set
    - Exit with clear error message if missing
+
    ```bash
    : "${MCP_CONFIG_PATH:?MCP_CONFIG_PATH is required}"
    ```
@@ -69,6 +73,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 7. **Add Process Management**:
    - Handle SIGTERM to gracefully stop server
    - Forward signals to Node.js process
+
    ```bash
    trap 'kill -TERM $PID; wait $PID' TERM INT
    ```
@@ -76,6 +81,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 8. **Support Different Run Modes**:
    - Accept command line arg (dev/prod)
    - Adjust logging verbosity accordingly
+
    ```bash
    MODE="${1:-prod}"
    if [ "$MODE" = "dev" ]; then
@@ -85,6 +91,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task3/TaskCompleteNote3.md`
 
 9. **Execute Main Server**:
    - Replace shell process with Node
+
    ```bash
    exec node server.js "$@"
    ```
