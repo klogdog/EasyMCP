@@ -1,0 +1,420 @@
+# MCP Server Configuration Schema
+# Version: 1.0.0
+#
+# This file documents the complete configuration structure for MCP servers.
+# Use this as a reference when creating configuration files.
+#
+# Environment Variable Substitution:
+#   - ${VAR_NAME} - Required environment variable
+#   - ${VAR_NAME:-default} - Optional with default value
+#
+# All fields are optional unless marked as "Required"
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+# Server settings control how the MCP server binds and operates
+server:
+  # Server name identifier
+  # Example: "my-mcp-server"
+  name:
+    type: string
+    required: true
+    description: "Unique name for this MCP server instance"
+    example: "mcp-server"
+
+  # Server version (semver)
+  # Example: "1.0.0"
+  version:
+    type: string
+    required: true
+    pattern: "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$"
+    description: "Semantic version of the server"
+    example: "0.1.0"
+
+  # Host address to bind to
+  # Use "localhost" for development, "0.0.0.0" for production
+  host:
+    type: string
+    required: false
+    default: "localhost"
+    description: "Host address the server binds to"
+    examples:
+      - "localhost" # Local development only
+      - "0.0.0.0" # Accept all connections
+      - "127.0.0.1" # IPv4 loopback only
+
+  # Port number for the server
+  # Can use env var: ${PORT:-8080}
+  port:
+    type: number
+    required: false
+    default: 8080
+    minimum: 1
+    maximum: 65535
+    description: "TCP port the server listens on"
+    example: 3000
+
+  # Enable CORS (Cross-Origin Resource Sharing)
+  cors:
+    type: boolean
+    required: false
+    default: false
+    description: "Enable CORS headers for cross-origin requests"
+
+  # Maximum request body size
+  # Supports units: "1kb", "1mb", "1gb"
+  maxRequestSize:
+    type: string
+    required: false
+    default: "10mb"
+    pattern: "^\\d+(kb|mb|gb)$"
+    description: "Maximum allowed request body size"
+    examples:
+      - "100kb"
+      - "10mb"
+      - "1gb"
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+# Database connection settings for persistent storage
+database:
+  # Database type/driver
+  type:
+    type: string
+    required: false
+    enum:
+      - "postgres"
+      - "sqlite"
+      - "mysql"
+    default: "sqlite"
+    description: "Database engine type"
+
+  # Connection URL
+  # Use env var for sensitive URLs: ${DATABASE_URL}
+  url:
+    type: string
+    required: false
+    description: "Database connection URL or file path"
+    examples:
+      - "sqlite:./data/mcp.db"
+      - "postgres://user:pass@localhost:5432/mcp"
+      - "${DATABASE_URL}"
+
+  # Connection pool settings
+  pool:
+    min:
+      type: number
+      required: false
+      default: 2
+      minimum: 1
+      description: "Minimum connections in pool"
+
+    max:
+      type: number
+      required: false
+      default: 10
+      minimum: 1
+      description: "Maximum connections in pool"
+
+    idleTimeout:
+      type: number
+      required: false
+      default: 30000
+      description: "Idle connection timeout in milliseconds"
+
+  # Query timeout
+  timeout:
+    type: number
+    required: false
+    default: 5000
+    description: "Query timeout in milliseconds"
+
+# =============================================================================
+# SERVICES CONFIGURATION
+# =============================================================================
+# External service integrations (APIs, third-party services)
+# Each service is identified by a unique key
+services:
+  "[serviceName]":
+    type: object
+    description: "Configuration for an external service"
+    properties:
+      # API key for authentication
+      # Use env var: ${SERVICE_API_KEY}
+      apiKey:
+        type: string
+        required: false
+        sensitive: true
+        description: "API key for service authentication"
+        example: "${OPENAI_API_KEY}"
+
+      # Service endpoint URL
+      endpoint:
+        type: string
+        required: false
+        description: "Base URL for service API"
+        example: "https://api.openai.com/v1"
+
+      # Request timeout
+      timeout:
+        type: number
+        required: false
+        default: 30000
+        description: "Request timeout in milliseconds"
+
+      # Rate limiting
+      rateLimit:
+        requestsPerMinute:
+          type: number
+          required: false
+          description: "Maximum requests per minute"
+
+        retryAfter:
+          type: number
+          required: false
+          default: 1000
+          description: "Retry delay on rate limit in milliseconds"
+
+# =============================================================================
+# CONNECTORS CONFIGURATION
+# =============================================================================
+# Connector configurations for data sources and integrations
+connectors:
+  "[connectorName]":
+    type: object
+    description: "Configuration for a connector"
+    properties:
+      # Connector type identifier
+      type:
+        type: string
+        required: true
+        enum:
+          - "database"
+          - "email"
+          - "api"
+          - "file"
+          - "custom"
+        description: "Type of connector"
+
+      # Enable/disable connector
+      enabled:
+        type: boolean
+        required: false
+        default: true
+        description: "Whether connector is active"
+
+      # Connector credentials
+      credentials:
+        type: object
+        description: "Authentication credentials (use env vars)"
+        additionalProperties:
+          type: string
+          sensitive: true
+
+      # Connector-specific settings
+      settings:
+        type: object
+        description: "Connector-specific configuration"
+        additionalProperties: true
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Logging settings for observability and debugging
+logging:
+  # Log level threshold
+  level:
+    type: string
+    required: false
+    enum:
+      - "debug"
+      - "info"
+      - "warn"
+      - "error"
+    default: "info"
+    description: "Minimum log level to output"
+
+  # Log format
+  format:
+    type: string
+    required: false
+    enum:
+      - "json" # Structured JSON (production)
+      - "text" # Human-readable text
+      - "pretty" # Colorized text (development)
+    default: "json"
+    description: "Log output format"
+
+  # Log destination
+  destination:
+    type: string
+    required: false
+    enum:
+      - "stdout"
+      - "stderr"
+      - "file"
+      - "console"
+    default: "stdout"
+    description: "Where to send log output"
+
+  # Log file path (when destination is "file")
+  filePath:
+    type: string
+    required: false
+    description: "Path to log file (required if destination is 'file')"
+    example: "/var/log/mcp-server.log"
+
+  # Log rotation settings
+  rotation:
+    maxSize:
+      type: string
+      required: false
+      default: "10mb"
+      description: "Maximum log file size before rotation"
+
+    maxFiles:
+      type: number
+      required: false
+      default: 5
+      description: "Maximum number of rotated log files to keep"
+
+    compress:
+      type: boolean
+      required: false
+      default: true
+      description: "Compress rotated log files"
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+# Toggle features on/off without code changes
+features:
+  "[featureName]":
+    type: boolean
+    default: true
+    description: "Enable or disable a specific feature"
+    examples:
+      add: true
+      multiply: true
+      databaseIntegration: false
+      experimentalFeature: false
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+# Security-related settings
+security:
+  # Enable authentication
+  authentication:
+    enabled:
+      type: boolean
+      required: false
+      default: false
+      description: "Require authentication for requests"
+
+    type:
+      type: string
+      required: false
+      enum:
+        - "api-key"
+        - "jwt"
+        - "oauth2"
+      description: "Authentication method"
+
+    apiKey:
+      type: string
+      required: false
+      sensitive: true
+      description: "API key for authentication (use ${API_KEY})"
+
+  # TLS/SSL settings
+  tls:
+    enabled:
+      type: boolean
+      required: false
+      default: false
+      description: "Enable TLS encryption"
+
+    certFile:
+      type: string
+      required: false
+      description: "Path to TLS certificate file"
+
+    keyFile:
+      type: string
+      required: false
+      description: "Path to TLS private key file"
+
+  # Rate limiting
+  rateLimit:
+    enabled:
+      type: boolean
+      required: false
+      default: true
+      description: "Enable rate limiting"
+
+    windowMs:
+      type: number
+      required: false
+      default: 60000
+      description: "Rate limit window in milliseconds"
+
+    maxRequests:
+      type: number
+      required: false
+      default: 100
+      description: "Maximum requests per window"
+
+# =============================================================================
+# METRICS CONFIGURATION
+# =============================================================================
+# Observability and monitoring settings
+metrics:
+  # Enable metrics collection
+  enabled:
+    type: boolean
+    required: false
+    default: true
+    description: "Enable metrics collection"
+
+  # Metrics endpoint path
+  path:
+    type: string
+    required: false
+    default: "/metrics"
+    description: "HTTP path for metrics endpoint"
+
+  # Include default metrics
+  includeDefaults:
+    type: boolean
+    required: false
+    default: true
+    description: "Include default Node.js/process metrics"
+
+# =============================================================================
+# TOOLS CONFIGURATION
+# =============================================================================
+# Tool-specific configurations
+tools:
+  "[toolName]":
+    type: object
+    description: "Configuration for a specific tool"
+    properties:
+      enabled:
+        type: boolean
+        required: false
+        default: true
+        description: "Enable or disable this tool"
+
+      timeout:
+        type: number
+        required: false
+        default: 30000
+        description: "Tool execution timeout in milliseconds"
+
+      settings:
+        type: object
+        description: "Tool-specific settings"
+        additionalProperties: true

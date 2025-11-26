@@ -1,0 +1,223 @@
+# =============================================================================
+# MCP Server Production Configuration
+# =============================================================================
+#
+# Configuration optimized for production deployment:
+# - Structured JSON logging for aggregation
+# - External database (Postgres)
+# - Strict security settings
+# - Authentication required
+# - Optimized timeouts
+#
+# SECURITY CHECKLIST:
+# ✓ Set all required environment variables
+# ✓ Enable authentication
+# ✓ Use strong API keys
+# ✓ Enable TLS or use reverse proxy with TLS
+# ✓ Review rate limiting settings
+# ✓ Disable experimental features
+#
+# Usage:
+#   NODE_ENV=production npm start
+#
+# =============================================================================
+
+server:
+  name: mcp-server
+  version: 0.1.0
+
+  # Accept connections from all interfaces
+  # IMPORTANT: Use a reverse proxy (nginx, traefik) for TLS termination
+  host: 0.0.0.0
+
+  # Use PORT env var for container orchestration (K8s, ECS, etc.)
+  port: ${PORT:-8080}
+
+  # CORS should be configured in reverse proxy
+  # Only enable if directly exposed to browsers
+  cors: false
+
+  maxRequestSize: 10mb
+
+# Production database - PostgreSQL recommended
+database:
+  type: postgres
+
+  # REQUIRED: Set DATABASE_URL environment variable
+  # Format: postgres://user:password@host:port/database
+  url: ${DATABASE_URL}
+
+  pool:
+    # Scale based on expected load
+    min: 5
+    max: 50
+    idleTimeout: 30000
+
+  # Shorter timeout for production
+  timeout: 5000
+
+# Structured JSON logging for log aggregation
+logging:
+  # Info level for production (less noise)
+  level: info
+
+  # JSON format for log aggregation (ELK, Datadog, etc.)
+  format: json
+
+  # Stdout for container logs
+  destination: stdout
+
+  # Optional: Write to file with rotation
+  # filePath: /var/log/mcp-server.log
+  # rotation:
+  #   maxSize: 100mb
+  #   maxFiles: 10
+  #   compress: true
+
+# Production services with real API keys
+services:
+  openai:
+    # REQUIRED: Set OPENAI_API_KEY environment variable
+    apiKey: ${OPENAI_API_KEY}
+    endpoint: https://api.openai.com/v1
+    timeout: 30000
+    rateLimit:
+      requestsPerMinute: 60
+      retryAfter: 1000
+
+# Production connectors with secure credentials
+connectors:
+  database-connector:
+    type: database
+    enabled: true
+    credentials:
+      # REQUIRED: Set these environment variables
+      url: ${DATABASE_CONNECTOR_URL}
+      username: ${DATABASE_CONNECTOR_USERNAME}
+      password: ${DATABASE_CONNECTOR_PASSWORD}
+    settings:
+      availableMethods:
+        - query
+        - insert
+        - update
+        - delete
+
+  email-connector:
+    type: email
+    enabled: true
+    credentials:
+      # REQUIRED: Set EMAIL_API_KEY environment variable
+      apiKey: ${EMAIL_API_KEY}
+      fromEmail: ${EMAIL_FROM:-noreply@example.com}
+    settings:
+      availableMethods:
+        - send
+        - receive
+        - list
+      # Disable mock mode in production!
+      mockMode: false
+
+# Production feature flags
+features:
+  add: true
+  subtract: true
+  multiply: true
+  divide: true
+  read: true
+  stat: true
+  list: true
+  databaseIntegration: true
+  emailIntegration: true
+  # Disable experimental features in production
+  experimentalFeatures: false
+
+# Production security - STRICT SETTINGS
+security:
+  authentication:
+    # IMPORTANT: Enable authentication in production!
+    enabled: true
+    type: api-key
+    # REQUIRED: Set API_KEY environment variable
+    apiKey: ${API_KEY}
+
+  tls:
+    # Enable if not behind a TLS-terminating reverse proxy
+    enabled: ${TLS_ENABLED:-false}
+    certFile: ${TLS_CERT_FILE:-}
+    keyFile: ${TLS_KEY_FILE:-}
+
+  rateLimit:
+    enabled: true
+    windowMs: 60000
+    # Conservative limit - adjust based on legitimate traffic
+    maxRequests: 100
+
+# Metrics for monitoring
+metrics:
+  enabled: true
+  # Use path that won't conflict with application routes
+  path: /metrics
+  includeDefaults: true
+
+# Tool configs with production timeouts
+tools:
+  summarize:
+    enabled: true
+    timeout: 30000
+    settings:
+      maxInputLength: 100000
+      # Disable debug in production
+      debug: false
+
+  translate:
+    enabled: true
+    timeout: 15000
+    settings:
+      defaultLanguage: en
+      debug: false
+
+  classify:
+    enabled: true
+    timeout: 15000
+    settings:
+      debug: false
+# =============================================================================
+# Production Deployment Checklist
+# =============================================================================
+#
+# Environment Variables (REQUIRED):
+#   DATABASE_URL          - PostgreSQL connection string
+#   DATABASE_CONNECTOR_URL - Connector database URL
+#   DATABASE_CONNECTOR_USERNAME - Connector DB username
+#   DATABASE_CONNECTOR_PASSWORD - Connector DB password
+#   OPENAI_API_KEY        - OpenAI API key
+#   EMAIL_API_KEY         - Email service API key
+#   API_KEY               - Authentication API key (generate strong key!)
+#
+# Environment Variables (OPTIONAL):
+#   PORT                  - Server port (default: 8080)
+#   EMAIL_FROM            - Email sender address
+#   TLS_ENABLED           - Enable TLS (default: false)
+#   TLS_CERT_FILE         - Path to TLS certificate
+#   TLS_KEY_FILE          - Path to TLS private key
+#
+# Security Best Practices:
+#   1. Use a secrets manager (AWS Secrets Manager, Vault, etc.)
+#   2. Rotate API keys regularly
+#   3. Monitor authentication failures
+#   4. Set up alerting for rate limit hits
+#   5. Keep dependencies updated
+#
+# Monitoring:
+#   - Collect metrics from /metrics endpoint
+#   - Set up log aggregation (ELK, Datadog, CloudWatch)
+#   - Monitor database connection pool usage
+#   - Track API latency and error rates
+#
+# Scaling:
+#   - Use container orchestration (K8s, ECS)
+#   - Configure horizontal pod autoscaling
+#   - Use connection pooling for database
+#   - Consider caching layer (Redis) for high-traffic
+#
+# =============================================================================

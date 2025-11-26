@@ -1,0 +1,170 @@
+# =============================================================================
+# MCP Server Development Configuration
+# =============================================================================
+#
+# Configuration optimized for local development:
+# - Verbose debug logging
+# - Local database (SQLite)
+# - Permissive CORS
+# - No authentication required
+# - Pretty console output
+#
+# Usage:
+#   NODE_ENV=development npm start
+#
+# =============================================================================
+
+server:
+  name: mcp-server
+  version: 0.1.0
+
+  # Localhost only - safe for development
+  host: localhost
+  port: 3000
+
+  # Enable CORS for local frontend development
+  cors: true
+
+  maxRequestSize: 50mb
+
+# Local SQLite database - no setup required
+database:
+  type: sqlite
+  url: sqlite:./data/dev.db
+
+  pool:
+    min: 1
+    max: 5
+    idleTimeout: 60000
+
+  timeout: 10000
+
+# Verbose logging with pretty output
+logging:
+  # Debug level shows all logs
+  level: debug
+
+  # Pretty format with colors for terminal
+  format: pretty
+
+  # Console output
+  destination: console
+
+# Development services (using test/mock APIs where available)
+services:
+  # OpenAI - use test key or mock service
+  openai:
+    apiKey: ${OPENAI_API_KEY:-sk-test-key}
+    endpoint: ${OPENAI_ENDPOINT:-https://api.openai.com/v1}
+    timeout: 60000
+
+# Development connectors with local credentials
+connectors:
+  database-connector:
+    type: database
+    enabled: true
+    credentials:
+      url: ${DATABASE_CONNECTOR_URL:-sqlite:./data/connector.db}
+      username: ${DATABASE_CONNECTOR_USERNAME:-dev}
+      password: ${DATABASE_CONNECTOR_PASSWORD:-dev}
+    settings:
+      availableMethods:
+        - query
+        - insert
+        - update
+        - delete
+
+  email-connector:
+    type: email
+    enabled: true
+    credentials:
+      apiKey: ${EMAIL_API_KEY:-test-key}
+      fromEmail: ${EMAIL_FROM:-dev@localhost}
+    settings:
+      availableMethods:
+        - send
+        - receive
+        - list
+      # Use mock email in development
+      mockMode: true
+
+# All features enabled for testing
+features:
+  add: true
+  subtract: true
+  multiply: true
+  divide: true
+  read: true
+  stat: true
+  list: true
+  databaseIntegration: true
+  emailIntegration: true
+  # Enable experimental features in dev
+  experimentalFeatures: true
+
+# Relaxed security for local development
+security:
+  authentication:
+    # No auth required in development
+    enabled: false
+
+  tls:
+    # No TLS needed for localhost
+    enabled: false
+
+  rateLimit:
+    # Higher limits for development/testing
+    enabled: true
+    windowMs: 60000
+    maxRequests: 1000
+
+# Metrics enabled for debugging
+metrics:
+  enabled: true
+  path: /metrics
+  includeDefaults: true
+
+# Tool configs with longer timeouts for debugging
+tools:
+  summarize:
+    enabled: true
+    timeout: 120000
+    settings:
+      maxInputLength: 500000
+      debug: true
+
+  translate:
+    enabled: true
+    timeout: 60000
+    settings:
+      defaultLanguage: en
+      debug: true
+
+  classify:
+    enabled: true
+    timeout: 60000
+    settings:
+      debug: true
+# =============================================================================
+# Development Notes
+# =============================================================================
+#
+# Quick Start:
+#   1. Copy .env.example to .env and set your API keys
+#   2. Run: npm run dev
+#   3. Open: http://localhost:3000
+#
+# Hot Reloading:
+#   The config watcher is enabled in development mode.
+#   Changes to this file will be automatically reloaded.
+#
+# Debugging:
+#   - Use debug log level for verbose output
+#   - Check /metrics endpoint for runtime metrics
+#   - Add breakpoints in VS Code for step-through debugging
+#
+# Mock Mode:
+#   Some connectors support mockMode for testing without real services.
+#   Set mockMode: true in connector settings.
+#
+# =============================================================================
