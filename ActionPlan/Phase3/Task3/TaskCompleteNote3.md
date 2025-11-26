@@ -18,31 +18,36 @@ Created `base/credential-discovery.ts` with comprehensive credential discovery f
 #### Type Definitions
 
 ```typescript
-export type CredentialType = "api_key" | "oauth" | "password" | "token" | "secret";
+export type CredentialType =
+  | "api_key"
+  | "oauth"
+  | "password"
+  | "token"
+  | "secret";
 
 export interface CredentialDefinition {
-    name: string;
-    type: CredentialType;
-    required: boolean;
-    description: string;
-    service?: string;
-    validation?: RegExp;
+  name: string;
+  type: CredentialType;
+  required: boolean;
+  description: string;
+  service?: string;
+  validation?: RegExp;
 }
 
 export interface CredentialSchema {
-    credentials: CredentialDefinition[];
-    source: string;
-    moduleType: "tool" | "connector";
+  credentials: CredentialDefinition[];
+  source: string;
+  moduleType: "tool" | "connector";
 }
 
 export interface AggregatedCredential {
-    name: string;
-    type: CredentialType;
-    required: boolean;
-    description: string;
-    service?: string;
-    validation?: RegExp;
-    usedBy: string[];
+  name: string;
+  type: CredentialType;
+  required: boolean;
+  description: string;
+  service?: string;
+  validation?: RegExp;
+  usedBy: string[];
 }
 ```
 
@@ -74,7 +79,7 @@ export interface AggregatedCredential {
    - Main aggregation function
    - Scans all modules and extracts credentials from:
      - Module metadata
-     - TypeScript JSDoc comments  
+     - TypeScript JSDoc comments
      - Python docstrings
    - Merges duplicates by credential name
    - Tracks which modules use each credential (`usedBy` array)
@@ -105,41 +110,49 @@ export interface AggregatedCredential {
 Created `base/test-credential-discovery.ts` with 8 test scenarios:
 
 **Test 1: Extract credentials from TypeScript metadata** ✅
+
 - Tests metadata.credentials extraction
 - Verifies name, type, required, service fields
 - Tests both required and optional credentials
 
 **Test 2: Extract credentials from JSDoc @requires-credential tags** ✅
+
 - Tests JSDoc comment parsing
 - Verifies multiple credential types (api_key, oauth, password)
 - Tests optional credential detection
 
 **Test 3: Extract credentials from Python metadata dict** ✅
+
 - Tests Python metadata dictionary parsing
 - Verifies service field extraction
 - Tests password type credentials
 
 **Test 4: Extract credentials from Python docstring directives** ✅
+
 - Tests `:credential` directive parsing
 - Verifies multiple credentials per file
 - Tests optional detection
 
 **Test 5: Merge duplicate credentials across modules** ✅
+
 - Tests aggregation of same credential from multiple modules
 - Verifies usedBy tracking
 - Ensures required if ANY module requires it
 
 **Test 6: Filter required vs optional credentials** ✅
+
 - Tests filterRequiredCredentials function
 - Tests filterOptionalCredentials function
 - Verifies correct filtering
 
 **Test 7: Group credentials by service** ✅
+
 - Tests groupCredentialsByService function
 - Verifies correct grouping
 - Tests "other" group for service-less credentials
 
 **Test 8: Convert to prompt format** ✅
+
 - Tests credentialToPromptRequirement function
 - Verifies type mapping (api_key → password)
 - Tests validation preservation
@@ -161,11 +174,13 @@ Tests completed: 48 passed, 0 failed
 ## Files Created/Modified
 
 ### Created Files:
+
 - ✅ `/workspace/base/credential-discovery.ts` - Main credential discovery module
 - ✅ `/workspace/base/test-credential-discovery.ts` - Comprehensive test suite
 - ✅ `/workspace/ActionPlan/Phase3/Task3/TaskCompleteNote3.md` - This completion note
 
 ### Modified Files:
+
 - ✅ `/workspace/ActionPlan/Phase3/TaskCheckList3.md` - Marked Task 3.3 complete
 
 ## Success Criteria Verification
@@ -194,7 +209,10 @@ The credential discovery system integrates with:
 
 ```typescript
 import { loadModules } from "./loader";
-import { discoverCredentialRequirements, credentialToPromptRequirement } from "./credential-discovery";
+import {
+  discoverCredentialRequirements,
+  credentialToPromptRequirement,
+} from "./credential-discovery";
 import { promptForCredentials } from "./prompt";
 
 // Load all modules
@@ -213,6 +231,7 @@ const values = await promptForCredentials(requirements);
 ## Technical Details
 
 ### JSDoc Format Supported:
+
 ```typescript
 /**
  * @requires-credential {api_key} OPENAI_API_KEY - OpenAI API key for GPT access
@@ -221,6 +240,7 @@ const values = await promptForCredentials(requirements);
 ```
 
 ### Python Docstring Format Supported:
+
 ```python
 """
 :credential {password} SMTP_PASSWORD: SMTP server password
@@ -229,6 +249,7 @@ const values = await promptForCredentials(requirements);
 ```
 
 ### Python Metadata Format Supported:
+
 ```python
 metadata = {
     "credentials": [
