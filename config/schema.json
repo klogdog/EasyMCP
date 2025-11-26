@@ -1,0 +1,384 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://easymcp.dev/schemas/config.json",
+  "title": "MCP Server Configuration Schema",
+  "description": "Configuration schema for MCP (Model Context Protocol) servers",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "object",
+      "description": "Server configuration settings",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name for this MCP server instance",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version of the server",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host address the server binds to",
+          "default": "localhost"
+        },
+        "port": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            {
+              "type": "string",
+              "pattern": "^\\$\\{[A-Z_]+(:-.+)?\\}$",
+              "description": "Environment variable reference"
+            }
+          ],
+          "description": "TCP port the server listens on",
+          "default": 8080
+        },
+        "cors": {
+          "type": "boolean",
+          "description": "Enable CORS headers for cross-origin requests",
+          "default": false
+        },
+        "maxRequestSize": {
+          "type": "string",
+          "description": "Maximum allowed request body size",
+          "pattern": "^\\d+(kb|mb|gb)$",
+          "default": "10mb"
+        }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "database": {
+      "type": "object",
+      "description": "Database connection settings",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["postgres", "sqlite", "mysql"],
+          "description": "Database engine type",
+          "default": "sqlite"
+        },
+        "url": {
+          "type": "string",
+          "description": "Database connection URL or file path"
+        },
+        "pool": {
+          "type": "object",
+          "description": "Connection pool settings",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 2,
+              "description": "Minimum connections in pool"
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10,
+              "description": "Maximum connections in pool"
+            },
+            "idleTimeout": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 30000,
+              "description": "Idle connection timeout in milliseconds"
+            }
+          },
+          "additionalProperties": false
+        },
+        "poolSize": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string" }
+          ],
+          "description": "Legacy: Size of connection pool",
+          "default": 10
+        },
+        "timeout": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string" }
+          ],
+          "description": "Query timeout in milliseconds",
+          "default": 5000
+        }
+      },
+      "additionalProperties": false
+    },
+    "services": {
+      "type": "object",
+      "description": "External service integrations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "API key for service authentication"
+          },
+          "endpoint": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL for service API"
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 30000,
+            "description": "Request timeout in milliseconds"
+          },
+          "rateLimit": {
+            "type": "object",
+            "properties": {
+              "requestsPerMinute": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum requests per minute"
+              },
+              "retryAfter": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 1000,
+                "description": "Retry delay on rate limit in milliseconds"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "connectors": {
+      "type": "object",
+      "description": "Connector configurations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["database", "email", "api", "file", "custom"],
+            "description": "Type of connector"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether connector is active"
+          },
+          "credentials": {
+            "type": "object",
+            "description": "Authentication credentials",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "description": "Connector-specific settings",
+            "additionalProperties": true
+          }
+        },
+        "required": ["type"],
+        "additionalProperties": false
+      }
+    },
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Minimum log level to output"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "text", "pretty"],
+          "default": "json",
+          "description": "Log output format"
+        },
+        "destination": {
+          "type": "string",
+          "enum": ["stdout", "stderr", "file", "console"],
+          "default": "stdout",
+          "description": "Where to send log output"
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Path to log file (required if destination is 'file')"
+        },
+        "rotation": {
+          "type": "object",
+          "properties": {
+            "maxSize": {
+              "type": "string",
+              "pattern": "^\\d+(kb|mb|gb)$",
+              "default": "10mb",
+              "description": "Maximum log file size before rotation"
+            },
+            "maxFiles": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 5,
+              "description": "Maximum number of rotated log files"
+            },
+            "compress": {
+              "type": "boolean",
+              "default": true,
+              "description": "Compress rotated log files"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "if": {
+        "properties": { "destination": { "const": "file" } }
+      },
+      "then": {
+        "required": ["filePath"]
+      }
+    },
+    "features": {
+      "type": "object",
+      "description": "Feature flags",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "security": {
+      "type": "object",
+      "description": "Security configuration",
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Require authentication for requests"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["api-key", "jwt", "oauth2"],
+              "description": "Authentication method"
+            },
+            "apiKey": {
+              "type": "string",
+              "description": "API key for authentication"
+            }
+          },
+          "additionalProperties": false
+        },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable TLS encryption"
+            },
+            "certFile": {
+              "type": "string",
+              "description": "Path to TLS certificate file"
+            },
+            "keyFile": {
+              "type": "string",
+              "description": "Path to TLS private key file"
+            }
+          },
+          "additionalProperties": false,
+          "if": {
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "required": ["certFile", "keyFile"]
+          }
+        },
+        "rateLimit": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable rate limiting"
+            },
+            "windowMs": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 60000,
+              "description": "Rate limit window in milliseconds"
+            },
+            "maxRequests": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 100,
+              "description": "Maximum requests per window"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Metrics configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable metrics collection"
+        },
+        "path": {
+          "type": "string",
+          "default": "/metrics",
+          "description": "HTTP path for metrics endpoint"
+        },
+        "includeDefaults": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include default Node.js/process metrics"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "object",
+      "description": "Tool-specific configurations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable this tool"
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 30000,
+            "description": "Tool execution timeout in milliseconds"
+          },
+          "settings": {
+            "type": "object",
+            "description": "Tool-specific settings",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["server"],
+  "additionalProperties": true
+}
