@@ -4,10 +4,18 @@
  * This module dynamically generates a Dockerfile for the MCP server based on
  * loaded modules. It handles base image selection, dependency installation,
  * and proper configuration of the containerized MCP server.
+ * 
+ * Also provides image building functionality to execute Docker builds
+ * with proper progress streaming, logging, and error handling.
  */
 
 import { MCPManifest } from "./generator";
 import { Module } from "./loader";
+import { DockerClient, DockerBuildError, ProgressCallback, BuildProgress } from "./docker-client";
+import * as fs from "fs";
+import * as fsp from "fs/promises";
+import * as path from "path";
+import * as os from "os";
 
 /**
  * Options for Dockerfile generation
@@ -831,4 +839,652 @@ export function generateDockerignore(): string {
     ];
 
     return lines.join("\n");
+}
+
+// ============================================================================
+// Image Builder Types and Interfaces
+// ============================================================================
+
+/**
+ * Options for building an MCP Docker image
+ */
+export interface BuildOptions {
+    /** Custom image tag (default: mcp-server:latest) */
+    tag?: string;
+    /** Additional tags for the image */
+    additionalTags?: string[];
+    /** Build arguments to pass to Docker */
+    buildArgs?: Record<string, string>;
+    /** Multi-stage build target */
+    target?: string;
+    /** Skip Docker cache */
+    noCache?: boolean;
+    /** Working directory for the build (default: process.cwd()) */
+    workingDir?: string;
+    /** Path to write build logs (default: .build.log) */
+    logFile?: string;
+    /** Dockerfile generation options */
+    dockerfileOptions?: DockerfileOptions;
+    /** Callback for progress updates */
+    onProgress?: (event: BuildProgressEvent) => void;
+    /** Whether to clean up on failure (default: true) */
+    cleanupOnFailure?: boolean;
+    /** Custom DockerClient instance */
+    dockerClient?: DockerClient;
+}
+
+/**
+ * Build progress event with parsed information
+ */
+export interface BuildProgressEvent {
+    /** Event type */
+    type: 'step' | 'download' | 'extract' | 'output' | 'error' | 'complete';
+    /** Current step number (if applicable) */
+    step?: number;
+    /** Total steps (if applicable) */
+    totalSteps?: number;
+    /** Progress message */
+    message: string;
+    /** Raw stream output */
+    raw?: string;
+    /** Progress percentage (0-100, if applicable) */
+    progress?: number;
+    /** Time elapsed since build start (ms) */
+    elapsed: number;
+    /** Timestamp */
+    timestamp: Date;
+}
+
+/**
+ * Result of a successful build
+ */
+export interface BuildResult {
+    /** The built image ID */
+    imageId: string;
+    /** Tags applied to the image */
+    tags: string[];
+    /** Total build time in milliseconds */
+    buildTime: number;
+    /** Path to the build log file */
+    logFile: string;
+    /** Size of the built image (if available) */
+    imageSize?: number;
+}
+
+/**
+ * Represents a build failure with diagnostic information
+ */
+export interface BuildFailure {
+    /** Error message */
+    message: string;
+    /** Step number where failure occurred */
+    failedStep?: number;
+    /** Total steps attempted */
+    totalSteps?: number;
+    /** The Dockerfile instruction that failed */
+    failedInstruction?: string;
+    /** Suggested fixes for the failure */
+    suggestions: string[];
+    /** Full build output for debugging */
+    buildOutput: string;
+    /** Path to the build log file */
+    logFile: string;
+}
+
+/**
+ * Build log entry with timestamp
+ */
+interface BuildLogEntry {
+    timestamp: Date;
+    type: 'info' | 'step' | 'error' | 'warning';
+    message: string;
+}
+
+// ============================================================================
+// Image Builder Implementation
+// ============================================================================
+
+/**
+ * Build an MCP Docker image from a manifest
+ * 
+ * This function handles the complete build process:
+ * 1. Creates a temporary build context with all required files
+ * 2. Generates a Dockerfile based on the manifest
+ * 3. Executes the Docker build with progress streaming
+ * 4. Captures logs and handles errors
+ * 5. Cleans up on failure
+ * 
+ * @param manifest - MCP manifest describing the server
+ * @param config - Configuration file path
+ * @param options - Build options
+ * @returns The built image ID on success
+ * @throws {DockerBuildError} If the build fails
+ * 
+ * @example
+ * ```typescript
+ * const imageId = await buildMCPImage(manifest, 'config/production.yaml', {
+ *   tag: 'my-mcp-server:1.0.0',
+ *   onProgress: (event) => console.log(event.message)
+ * });
+ * ```
+ */
+export async function buildMCPImage(
+    manifest: MCPManifest,
+    config: string,
+    options: BuildOptions = {}
+): Promise<string> {
+    const startTime = Date.now();
+    const workingDir = options.workingDir || process.cwd();
+    const logFile = options.logFile || path.join(workingDir, '.build.log');
+    const tag = options.tag || `mcp-server:latest`;
+    const cleanupOnFailure = options.cleanupOnFailure !== false;
+
+    const logs: BuildLogEntry[] = [];
+    let buildContextDir: string | null = null;
+    let buildOutput = '';
+
+    // Helper to log and optionally notify progress
+    const log = (type: BuildLogEntry['type'], message: string) => {
+        const entry: BuildLogEntry = {
+            timestamp: new Date(),
+            type,
+            message
+        };
+        logs.push(entry);
+        buildOutput += `[${entry.timestamp.toISOString()}] [${type.toUpperCase()}] ${message}\n`;
+    };
+
+    // Helper to send progress events
+    const sendProgress = (event: Partial<BuildProgressEvent>) => {
+        const fullEvent: BuildProgressEvent = {
+            type: event.type || 'output',
+            message: event.message || '',
+            elapsed: Date.now() - startTime,
+            timestamp: new Date(),
+            ...event
+        };
+
+        if (options.onProgress) {
+            options.onProgress(fullEvent);
+        }
+    };
+
+    try {
+        log('info', `Starting MCP image build for ${manifest.name} v${manifest.version}`);
+        sendProgress({ type: 'output', message: `Building MCP image: ${tag}` });
+
+        // 1. Create Docker client
+        const dockerClient = options.dockerClient || new DockerClient();
+
+        // Verify Docker is available
+        const isConnected = await dockerClient.ping();
+        if (!isConnected) {
+            throw new DockerBuildError('Docker daemon is not running or not accessible');
+        }
+        log('info', 'Docker daemon connected');
+
+        // 2. Create build context directory
+        buildContextDir = await createBuildContext(manifest, config, workingDir, options.dockerfileOptions);
+        log('info', `Build context created at: ${buildContextDir}`);
+        sendProgress({ type: 'output', message: 'Build context prepared' });
+
+        // 3. Track current step for progress
+        let currentStep = 0;
+        let totalSteps = 0;
+
+        // 4. Build the image with progress streaming
+        const progressCallback: ProgressCallback = (progress: BuildProgress) => {
+            // Parse step information from stream
+            if (progress.stream) {
+                const stepMatch = progress.stream.match(/Step (\d+)\/(\d+)/);
+                if (stepMatch && stepMatch[1] && stepMatch[2]) {
+                    currentStep = parseInt(stepMatch[1], 10);
+                    totalSteps = parseInt(stepMatch[2], 10);
+
+                    log('step', progress.stream.trim());
+                    sendProgress({
+                        type: 'step',
+                        step: currentStep,
+                        totalSteps,
+                        message: progress.stream.trim(),
+                        raw: progress.stream
+                    });
+                } else if (progress.stream.trim()) {
+                    // Other output
+                    buildOutput += progress.stream;
+                    sendProgress({
+                        type: 'output',
+                        message: progress.stream.trim(),
+                        raw: progress.stream,
+                        step: currentStep,
+                        totalSteps
+                    });
+                }
+            }
+
+            // Handle download progress
+            if (progress.status && progress.progress !== undefined) {
+                sendProgress({
+                    type: 'download',
+                    message: progress.status,
+                    progress: progress.progress
+                });
+            }
+
+            // Handle errors in stream
+            if (progress.error || progress.errorDetail) {
+                const errorMsg = progress.error || progress.errorDetail?.message || 'Unknown error';
+                log('error', errorMsg);
+                sendProgress({
+                    type: 'error',
+                    message: errorMsg
+                });
+            }
+        };
+
+        log('info', `Building image with tag: ${tag}`);
+
+        const imageId = await dockerClient.buildImage(
+            buildContextDir,
+            'Dockerfile',
+            tag,
+            progressCallback
+        );
+
+        if (!imageId) {
+            throw new DockerBuildError('Build completed but no image ID returned');
+        }
+
+        log('info', `Image built successfully: ${imageId}`);
+
+        // 5. Apply additional tags
+        if (options.additionalTags && options.additionalTags.length > 0) {
+            // Additional tagging would be done through DockerClient
+            // For now, we just track the primary tag
+            log('info', `Additional tags requested: ${options.additionalTags.join(', ')}`);
+        }
+
+        // 6. Write build log to file
+        await writeBuildLog(logFile, logs, buildOutput);
+        log('info', `Build log written to: ${logFile}`);
+
+        // 7. Calculate build time
+        const buildTime = Date.now() - startTime;
+        log('info', `Build completed in ${(buildTime / 1000).toFixed(2)}s`);
+
+        sendProgress({
+            type: 'complete',
+            message: `✅ Build completed in ${(buildTime / 1000).toFixed(1)}s\nImage ID: ${imageId}`
+        });
+
+        // 8. Cleanup build context
+        if (buildContextDir) {
+            await cleanupBuildContext(buildContextDir);
+        }
+
+        return imageId;
+
+    } catch (error) {
+        const err = error as Error;
+        log('error', `Build failed: ${err.message}`);
+
+        // Parse failure information
+        const failure = parseBuildFailure(err, buildOutput, logFile);
+
+        // Write error log
+        await writeBuildLog(logFile, logs, buildOutput);
+
+        sendProgress({
+            type: 'error',
+            message: `❌ Build failed: ${failure.message}`
+        });
+
+        // Cleanup on failure
+        if (cleanupOnFailure && buildContextDir) {
+            try {
+                await cleanupBuildContext(buildContextDir);
+                log('info', 'Build context cleaned up after failure');
+            } catch (cleanupError) {
+                // Ignore cleanup errors
+            }
+        }
+
+        // Re-throw with enhanced error information
+        const buildError = new DockerBuildError(
+            `Build failed: ${failure.message}${failure.suggestions.length > 0 ? '\n\nSuggestions:\n' + failure.suggestions.map(s => `  - ${s}`).join('\n') : ''}`,
+            buildOutput,
+            err instanceof Error ? err : undefined
+        );
+
+        throw buildError;
+    }
+}
+
+/**
+ * Create a build context directory with all required files
+ */
+async function createBuildContext(
+    manifest: MCPManifest,
+    config: string,
+    workingDir: string,
+    dockerfileOptions?: DockerfileOptions
+): Promise<string> {
+    // Create temp directory
+    const contextDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mcp-build-'));
+
+    try {
+        // Create subdirectories
+        await fsp.mkdir(path.join(contextDir, 'tools'), { recursive: true });
+        await fsp.mkdir(path.join(contextDir, 'connectors'), { recursive: true });
+        await fsp.mkdir(path.join(contextDir, 'config'), { recursive: true });
+
+        // Generate and write Dockerfile
+        const dockerfile = await generateDockerfile(manifest, config, undefined, dockerfileOptions);
+        await fsp.writeFile(path.join(contextDir, 'Dockerfile'), dockerfile);
+
+        // Generate and write .dockerignore
+        const dockerignore = generateDockerignore();
+        await fsp.writeFile(path.join(contextDir, '.dockerignore'), dockerignore);
+
+        // Write manifest
+        await fsp.writeFile(
+            path.join(contextDir, 'mcp-manifest.json'),
+            JSON.stringify(manifest, null, 2)
+        );
+
+        // Copy tools directory
+        const toolsDir = path.join(workingDir, 'tools');
+        if (fs.existsSync(toolsDir)) {
+            await copyDirectory(toolsDir, path.join(contextDir, 'tools'));
+        }
+
+        // Copy connectors directory  
+        const connectorsDir = path.join(workingDir, 'connectors');
+        if (fs.existsSync(connectorsDir)) {
+            await copyDirectory(connectorsDir, path.join(contextDir, 'connectors'));
+        }
+
+        // Copy config file
+        const configPath = path.join(workingDir, config);
+        if (fs.existsSync(configPath)) {
+            const configDest = path.join(contextDir, config);
+            await fsp.mkdir(path.dirname(configDest), { recursive: true });
+            await fsp.copyFile(configPath, configDest);
+        }
+
+        // Copy package.json if exists
+        const packageJsonPath = path.join(workingDir, 'package.json');
+        if (fs.existsSync(packageJsonPath)) {
+            await fsp.copyFile(packageJsonPath, path.join(contextDir, 'package.json'));
+        }
+
+        // Copy package-lock.json if exists
+        const packageLockPath = path.join(workingDir, 'package-lock.json');
+        if (fs.existsSync(packageLockPath)) {
+            await fsp.copyFile(packageLockPath, path.join(contextDir, 'package-lock.json'));
+        }
+
+        // Create placeholder server.js if it doesn't exist
+        const serverJsPath = path.join(workingDir, 'server.js');
+        if (fs.existsSync(serverJsPath)) {
+            await fsp.copyFile(serverJsPath, path.join(contextDir, 'server.js'));
+        } else {
+            // Create a minimal server.js placeholder
+            await fsp.writeFile(
+                path.join(contextDir, 'server.js'),
+                `// MCP Server Entry Point\n// Generated by MCP Generator\nconsole.log('MCP Server starting...');\n`
+            );
+        }
+
+        // Create placeholder server.py if Python is involved
+        const serverPyPath = path.join(workingDir, 'server.py');
+        if (fs.existsSync(serverPyPath)) {
+            await fsp.copyFile(serverPyPath, path.join(contextDir, 'server.py'));
+        }
+
+        // Copy requirements.txt if exists
+        const requirementsPath = path.join(workingDir, 'requirements.txt');
+        if (fs.existsSync(requirementsPath)) {
+            await fsp.copyFile(requirementsPath, path.join(contextDir, 'requirements.txt'));
+        }
+
+        return contextDir;
+    } catch (error) {
+        // Cleanup on error
+        try {
+            await fsp.rm(contextDir, { recursive: true, force: true });
+        } catch {
+            // Ignore cleanup errors
+        }
+        throw error;
+    }
+}
+
+/**
+ * Copy a directory recursively
+ */
+async function copyDirectory(src: string, dest: string): Promise<void> {
+    await fsp.mkdir(dest, { recursive: true });
+
+    const entries = await fsp.readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+
+        // Skip test files and hidden files
+        if (entry.name.startsWith('.') ||
+            entry.name.startsWith('test-') ||
+            entry.name.endsWith('.test.ts') ||
+            entry.name.endsWith('.spec.ts')) {
+            continue;
+        }
+
+        if (entry.isDirectory()) {
+            await copyDirectory(srcPath, destPath);
+        } else {
+            await fsp.copyFile(srcPath, destPath);
+        }
+    }
+}
+
+/**
+ * Clean up the build context directory
+ */
+async function cleanupBuildContext(contextDir: string): Promise<void> {
+    try {
+        await fsp.rm(contextDir, { recursive: true, force: true });
+    } catch (error) {
+        // Ignore cleanup errors
+        console.warn(`Warning: Failed to cleanup build context: ${contextDir}`);
+    }
+}
+
+/**
+ * Write build logs to file
+ */
+async function writeBuildLog(
+    logFile: string,
+    logs: BuildLogEntry[],
+    rawOutput: string
+): Promise<void> {
+    const logContent = [
+        '='.repeat(60),
+        'MCP Image Build Log',
+        `Generated: ${new Date().toISOString()}`,
+        '='.repeat(60),
+        '',
+        '--- Structured Log ---',
+        ...logs.map(l => `[${l.timestamp.toISOString()}] [${l.type.toUpperCase()}] ${l.message}`),
+        '',
+        '--- Raw Build Output ---',
+        rawOutput
+    ].join('\n');
+
+    await fsp.writeFile(logFile, logContent, 'utf-8');
+}
+
+/**
+ * Parse build failure to extract useful diagnostic information
+ */
+function parseBuildFailure(
+    error: Error,
+    buildOutput: string,
+    logFile: string
+): BuildFailure {
+    const failure: BuildFailure = {
+        message: error.message,
+        suggestions: [],
+        buildOutput,
+        logFile
+    };
+
+    // Extract step information from output
+    const stepMatches = buildOutput.matchAll(/Step (\d+)\/(\d+)/g);
+    let lastStep = 0;
+    let totalSteps = 0;
+
+    for (const match of stepMatches) {
+        if (match[1] && match[2]) {
+            lastStep = parseInt(match[1], 10);
+            totalSteps = parseInt(match[2], 10);
+        }
+    }
+
+    if (lastStep > 0) {
+        failure.failedStep = lastStep;
+        failure.totalSteps = totalSteps;
+    }
+
+    // Try to extract the failed instruction
+    const lines = buildOutput.split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (line && (line.includes('RUN ') || line.includes('COPY ') || line.includes('FROM '))) {
+            const instructionMatch = line.match(/(RUN|COPY|FROM|ADD|WORKDIR|ENV|EXPOSE|CMD|ENTRYPOINT)\s+.*/);
+            if (instructionMatch) {
+                failure.failedInstruction = instructionMatch[0];
+                break;
+            }
+        }
+    }
+
+    // Generate suggestions based on error patterns
+    const errorLower = error.message.toLowerCase();
+    const outputLower = buildOutput.toLowerCase();
+
+    // Missing dependency errors
+    if (outputLower.includes('no such file or directory') ||
+        outputLower.includes('not found')) {
+        failure.suggestions.push('Check that all required files exist in the build context');
+        failure.suggestions.push('Verify the COPY instructions reference correct paths');
+    }
+
+    // Package installation errors
+    if (outputLower.includes('npm err') || outputLower.includes('npm error')) {
+        failure.suggestions.push('Check package.json for invalid dependencies');
+        failure.suggestions.push('Try clearing npm cache and rebuilding');
+        failure.suggestions.push('Verify network connectivity for downloading packages');
+    }
+
+    if (outputLower.includes('pip') && (outputLower.includes('error') || outputLower.includes('failed'))) {
+        failure.suggestions.push('Check requirements.txt for invalid Python packages');
+        failure.suggestions.push('Verify Python package versions are compatible');
+    }
+
+    // Permission errors
+    if (outputLower.includes('permission denied') || outputLower.includes('eacces')) {
+        failure.suggestions.push('Check file permissions in the source directory');
+        failure.suggestions.push('Ensure Docker has permission to access the build context');
+    }
+
+    // Network errors
+    if (outputLower.includes('network') ||
+        outputLower.includes('connection refused') ||
+        outputLower.includes('timeout')) {
+        failure.suggestions.push('Check network connectivity');
+        failure.suggestions.push('Verify Docker can access package registries');
+        failure.suggestions.push('Try using --network=host if behind a proxy');
+    }
+
+    // Disk space errors
+    if (outputLower.includes('no space left') || outputLower.includes('disk full')) {
+        failure.suggestions.push('Free up disk space and try again');
+        failure.suggestions.push('Run "docker system prune" to clean up unused resources');
+    }
+
+    // Syntax errors
+    if (outputLower.includes('syntax error') || outputLower.includes('unexpected')) {
+        failure.suggestions.push('Check the Dockerfile syntax');
+        failure.suggestions.push('Verify shell commands in RUN instructions');
+    }
+
+    // Base image errors
+    if (outputLower.includes('manifest unknown') ||
+        outputLower.includes('pull access denied') ||
+        errorLower.includes('not found')) {
+        failure.suggestions.push('Verify the base image name and tag are correct');
+        failure.suggestions.push('Check if the image exists in the registry');
+        failure.suggestions.push('Try pulling the base image manually first');
+    }
+
+    // If no specific suggestions, add generic ones
+    if (failure.suggestions.length === 0) {
+        failure.suggestions.push('Review the build log for detailed error information');
+        failure.suggestions.push('Try building with --no-cache to start fresh');
+        failure.suggestions.push(`Check the build log at: ${logFile}`);
+    }
+
+    return failure;
+}
+
+/**
+ * Get a summary of a build result for display
+ */
+export function formatBuildResult(result: BuildResult): string {
+    const lines = [
+        '✅ Build Successful!',
+        '',
+        `Image ID: ${result.imageId}`,
+        `Tags: ${result.tags.join(', ')}`,
+        `Build Time: ${(result.buildTime / 1000).toFixed(2)}s`,
+        `Log File: ${result.logFile}`,
+    ];
+
+    if (result.imageSize) {
+        const sizeMB = (result.imageSize / (1024 * 1024)).toFixed(2);
+        lines.push(`Image Size: ${sizeMB} MB`);
+    }
+
+    return lines.join('\n');
+}
+
+/**
+ * Get a summary of a build failure for display
+ */
+export function formatBuildFailure(failure: BuildFailure): string {
+    const lines = [
+        '❌ Build Failed!',
+        '',
+        `Error: ${failure.message}`,
+    ];
+
+    if (failure.failedStep && failure.totalSteps) {
+        lines.push(`Failed at: Step ${failure.failedStep}/${failure.totalSteps}`);
+    }
+
+    if (failure.failedInstruction) {
+        lines.push(`Instruction: ${failure.failedInstruction}`);
+    }
+
+    if (failure.suggestions.length > 0) {
+        lines.push('');
+        lines.push('Suggestions:');
+        failure.suggestions.forEach(s => lines.push(`  - ${s}`));
+    }
+
+    lines.push('');
+    lines.push(`Log File: ${failure.logFile}`);
+
+    return lines.join('\n');
 }

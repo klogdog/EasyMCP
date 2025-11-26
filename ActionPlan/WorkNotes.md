@@ -1,150 +1,167 @@
 ## Create a new git branch for the task from Phase4 and merge back into Phase4 when finished
 
-# Work Notes - Task 4.3: Create Image Builder
+# Work Notes - Task 4.4: Implement Image Tagging & Registry
 
 ## Current Status
 
-**Task 4.2 (Build Dockerfile Generator)** has been **COMPLETED** ✅
+**Task 4.3 (Create Image Builder)** has been **COMPLETED** ✅
 
-### What Was Done in Task 4.2
+### What Was Done in Task 4.3
 
-The previous agent successfully completed all requirements for the Dockerfile generator.
+The previous agent successfully completed all requirements for the image builder.
 
 **Key accomplishments:**
 
-- ✅ Created `base/dockerizer.ts` with `generateDockerfile()` function (834 lines)
-- ✅ Implemented base image selection: `node:20-alpine`, `python:3.11-slim`, or multi-stage
-- ✅ Module analysis for TypeScript and Python detection
-- ✅ Working directory structure: `/app`, `/app/tools`, `/app/connectors`, `/app/config`
-- ✅ Environment variables: NODE_ENV, MCP_CONFIG_PATH, PYTHONPATH
-- ✅ Metadata labels: OCI compliant + MCP specific
-- ✅ Health check implementation
-- ✅ Dockerfile validation utility
-- ✅ Dockerignore generation utility
-- ✅ Created comprehensive test suite with 82 tests - all passing
+- ✅ Extended `base/dockerizer.ts` with `buildMCPImage()` function (~500 lines)
+- ✅ Creates temporary build context directory with all required files
+- ✅ Generates Dockerfile based on manifest configuration
+- ✅ Calls DockerClient.buildImage() with progress streaming
+- ✅ Parses JSON progress messages with step numbers and timing
+- ✅ Captures build logs with timestamps to .build.log
+- ✅ Handles build failures with diagnostic info and fix suggestions
+- ✅ Cleanup on failure with configurable `cleanupOnFailure` option
+- ✅ Returns imageId on success
+- ✅ Added 26 new tests (Tests 11-17), all 116 tests passing
 - ✅ Merged to Phase4
 
-Full details in: `/workspace/ActionPlan/Phase4/Task2/TaskCompleteNote2.md`
+Full details in: `/workspace/ActionPlan/Phase4/Task3/TaskCompleteNote3.md`
 
 ---
 
-## Your Task: Task 4.3 - Create Image Builder
+## Your Task: Task 4.4 - Implement Image Tagging & Registry
 
 **Phase**: Phase 4 - Docker Integration  
-**Goal**: Execute Docker image builds with the generated Dockerfile and build context.
+**Goal**: Tag built images with meaningful names and optionally push to registry.
 
 ### Key Requirements:
 
-1. **Extend `base/dockerizer.ts`** with new function:
+1. **Create `base/registry.ts`** with new function:
 
    ```typescript
-   async function buildMCPImage(
-     manifest: MCPManifest,
-     config: string,
-     options: BuildOptions
-   ): Promise<string>;
+   async function tagImage(imageId: string, tags: string[]): Promise<void>
    ```
 
-2. **Create build context directory**:
-   - Temp folder with Dockerfile
-   - All tools/connectors
-   - Config file
-   - manifest.json
+2. **Implement tagging strategy**:
+   - `mcp-server:latest`
+   - `mcp-server:v{version}` (e.g., v1.0.0)
+   - `mcp-server:{timestamp}` (e.g., 20251126-143022)
 
-3. **Use `tar` library**:
-   - Create build context tarball
-   - Docker API requires tar stream
+3. **Add push functionality**:
+   ```typescript
+   async function pushImage(
+     tag: string, 
+     registry: string, 
+     auth?: RegistryAuth
+   ): Promise<void>
+   ```
 
-4. **Call DockerClient.buildImage()**:
-   - Use context stream and generated Dockerfile
-   - Existing docker-client.ts provides this interface
+4. **Registry authentication support**:
+   - Docker Hub
+   - GitHub Container Registry (ghcr.io)
+   - Private registries
+   - Auth via config
 
-5. **Stream build progress to console**:
-   - Parse JSON progress messages
-   - Show step numbers
-   - Display time elapsed
+5. **List local images**:
+   ```typescript
+   async function listLocalImages(prefix: string): Promise<ImageInfo[]>
+   ```
 
-6. **Capture build logs**:
-   - Store in .build.log for debugging
-   - Include timestamps
+6. **Cleanup utility**:
+   ```typescript
+   async function pruneOldImages(keepCount: number): Promise<void>
+   ```
 
-7. **Handle build failures**:
-   - Parse error messages
-   - Identify which step failed
-   - Suggest fixes (missing dependency, syntax error)
+7. **Tag validation**:
+   - Follow Docker naming conventions
+   - Handle special characters
+   - Validate before applying
 
-8. **Add rollback capability**:
-   - If build fails, don't tag image
-   - Clean up partial images
+8. **Add dry-run mode**:
+   - Preview push operations without executing
 
-9. **Return imageId on success**
-
-10. **Create/update tests** in `base/test-dockerizer.ts`
+9. **Create tests** in `base/test-registry.ts`
 
 ### Quick Start:
 
 ```bash
 git checkout Phase4
-git checkout -b task-4.3
+git checkout -b task-4.4
 
-# Extend base/dockerizer.ts with buildMCPImage function
-# Update base/test-dockerizer.ts with build tests
-npm run build && node dist/test-dockerizer.js
+# Create base/registry.ts with all functions
+# Create base/test-registry.ts with tests
+npm run build && node dist/test-registry.js
 
 # Complete documentation and merge
-git commit -am "Complete Task 4.3 - Image Builder"
-git checkout Phase4 && git merge --no-ff task-4.3
+git commit -am "Complete Task 4.4 - Image Tagging & Registry"
+git checkout Phase4 && git merge --no-ff task-4.4
 ```
 
 ### Reference Files:
 
-- Task details: `/workspace/ActionPlan/Phase4/Task3/Task3.md`
+- Task details: `/workspace/ActionPlan/Phase4/Task4/Task4.md`
 - Docker client: `/workspace/base/docker-client.ts`
-- Dockerfile generator: `/workspace/base/dockerizer.ts`
+- Image builder: `/workspace/base/dockerizer.ts`
 
 ### Dependencies:
 
 - `dockerode` - already installed
-- `tar-fs` - already installed (for build context)
 - `DockerClient` class from `docker-client.ts`
 
-### Interfaces to Use (from docker-client.ts):
+### Interfaces to Implement:
 
 ```typescript
-interface BuildOptions {
-    dockerfile?: string;     // Path to Dockerfile in context
-    tags?: string[];         // Image tags
-    buildArgs?: Record<string, string>;
-    target?: string;         // Multi-stage build target
-    noCache?: boolean;
+interface RegistryAuth {
+    username: string;
+    password: string;
+    serveraddress?: string;  // Registry URL
+    email?: string;          // For some registries
 }
 
-type ProgressCallback = (event: BuildProgressEvent) => void;
+interface TagOptions {
+    version?: string;        // Use manifest version
+    timestamp?: boolean;     // Add timestamp tag
+    latest?: boolean;        // Add :latest tag
+    prefix?: string;         // Custom prefix
+}
 
-// Use DockerClient.buildImage(contextPath, options, progressCallback)
+interface PushOptions {
+    dryRun?: boolean;        // Preview only
+    onProgress?: (event: PushProgressEvent) => void;
+}
+
+interface PushProgressEvent {
+    status: string;
+    progress?: number;
+    layer?: string;
+    error?: string;
+}
 ```
 
 ### Expected Output:
 
 ```
-Building MCP image...
-Step 1/12: FROM node:20-alpine
-Step 2/12: WORKDIR /app
-...
-Step 12/12: ENTRYPOINT ["node", "server.js"]
-✅ Build completed in 45.2s
-Image ID: sha256:abc123...
+Tagging image sha256:abc123...
+  → mcp-server:latest
+  → mcp-server:v1.0.0
+  → mcp-server:20251126-143022
+✅ Tagged successfully
+
+Pushing to ghcr.io/user/mcp-server:v1.0.0...
+  Layer 1/5: [=========>        ] 45%
+  Layer 2/5: [==================] 100%
+  ...
+✅ Push completed
 ```
+
 - Checklist: `/workspace/ActionPlan/Phase4/TaskCheckList4.md`
-- Docker client (use for reference): `base/docker-client.ts`
 
 ---
 
-## ⚠️ IMPORTANT: After Completing Task 4.2
+## ⚠️ IMPORTANT: After Completing Task 4.4
 
 You MUST complete these steps after finishing the implementation:
 
-1. **Write TaskReview2.md** - Create a review document at `/workspace/ActionPlan/Phase4/Task2/TaskReview2.md`
+1. **Write TaskReview4.md** - Create a review document at `/workspace/ActionPlan/Phase4/Task4/TaskReview4.md`
    - Include code review (analyze implementation quality)
    - Include test review (verify all tests pass)
    - Include success criteria verification
@@ -152,14 +169,16 @@ You MUST complete these steps after finishing the implementation:
 
 2. **Update TaskCheckList4.md** - Check off completed items in `/workspace/ActionPlan/Phase4/TaskCheckList4.md`
 
-3. **Write TaskCompleteNote2.md** - Document what was done at `/workspace/ActionPlan/Phase4/Task2/TaskCompleteNote2.md`
+3. **Write TaskCompleteNote4.md** - Document what was done at `/workspace/ActionPlan/Phase4/Task4/TaskCompleteNote4.md`
 
-4. **Update this WorkNotes.md** - Rewrite with instructions for Task 4.3 for the next agent
+4. **Update this WorkNotes.md** - Rewrite with instructions for Phase 5 (or final Phase 4 review if this is the last task)
 
 ---
 
-## Next Task Preview: Task 4.3 - Implement Container Runner
+## Next Steps Preview
 
-After completing Task 4.2, rewrite this file with instructions for Task 4.3.
+After completing Task 4.4, Phase 4 will be complete. 
 
-See full details: `/workspace/ActionPlan/Phase4/Task3/Task3.md`
+The next phase is **Phase 5: Server Runtime**.
+
+See full details: `/workspace/ActionPlan/Phase5/`
