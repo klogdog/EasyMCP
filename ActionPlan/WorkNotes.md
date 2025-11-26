@@ -32,6 +32,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task1/TaskCompleteNote1.md`
 1. **Create `base/templates/tool-loader.ts.template`**
 
 2. **Implement ToolRegistry Class**:
+
    ```typescript
    class ToolRegistry {
      private tools = new Map<string, Tool>();
@@ -47,9 +48,11 @@ Full details in: `/workspace/ActionPlan/Phase5/Task1/TaskCompleteNote1.md`
    - Extract default export
 
 4. **Create Tool Invocation Router**:
+
    ```typescript
-   async function invokeTool(name: string, args: any): Promise<any>
+   async function invokeTool(name: string, args: any): Promise<any>;
    ```
+
    - Look up tool by name
    - Call its handler
 
@@ -68,6 +71,7 @@ Full details in: `/workspace/ActionPlan/Phase5/Task1/TaskCompleteNote1.md`
 
 8. **Add Result Transformation**:
    - Wrap tool output in standard format:
+
    ```typescript
    { success: boolean, result?: any, error?: string }
    ```
@@ -121,7 +125,7 @@ interface ToolResult {
 class ToolRegistry {
   private tools = new Map<string, Tool>();
   private ajv = new Ajv();
-  
+
   register(tool: Tool): void { ... }
   get(name: string): Tool | undefined { ... }
   list(): Tool[] { ... }
