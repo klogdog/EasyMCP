@@ -18,20 +18,18 @@ This phase focuses on mcp server templates.
 - [x] Add placeholder markers: `{{TOOL_IMPORTS}}`, `{{CONNECTOR_IMPORTS}}`, `{{TOOL_REGISTRATION}}` for code generation
 - [x] **Success Criteria**: Template compiles to valid TypeScript; supports config loading; has health checks; handles shutdown
 
-
 ### Task 5.2: Build Tool Integration Template
 
-- [ ] Create `base/templates/tool-loader.ts.template`
-- [ ] Implement `class ToolRegistry { private tools = new Map<string, Tool>(); register(tool: Tool); get(name: string); list(); }`
-- [ ] Add dynamic import logic: iterate through manifest.tools, `await import(toolPath)`, extract default export
-- [ ] Create tool invocation router: `async function invokeTool(name: string, args: any): Promise<any>` that looks up tool and calls its handler
-- [ ] Implement error handling wrapper: try-catch around each tool invocation, log errors, return structured error response
-- [ ] Add tool lifecycle: `onLoad()` hook when tool is registered, `onUnload()` for cleanup
-- [ ] Implement input validation: validate args against tool.inputSchema using JSON Schema validator (ajv)
-- [ ] Add result transformation: wrap tool output in standard format `{ success: boolean, result?: any, error?: string }`
-- [ ] Include placeholder: `{{TOOL_LIST}}` for injecting tool definitions during code generation
-- [ ] **Success Criteria**: Dynamically loads tools; validates inputs; handles errors; provides consistent response format
-
+- [x] Create `base/templates/tool-loader.ts.template`
+- [x] Implement `class ToolRegistry { private tools = new Map<string, Tool>(); register(tool: Tool); get(name: string); list(); }`
+- [x] Add dynamic import logic: iterate through manifest.tools, `await import(toolPath)`, extract default export
+- [x] Create tool invocation router: `async function invokeTool(name: string, args: any): Promise<any>` that looks up tool and calls its handler
+- [x] Implement error handling wrapper: try-catch around each tool invocation, log errors, return structured error response
+- [x] Add tool lifecycle: `onLoad()` hook when tool is registered, `onUnload()` for cleanup
+- [x] Implement input validation: validate args against tool.inputSchema using JSON Schema validator (ajv)
+- [x] Add result transformation: wrap tool output in standard format `{ success: boolean, result?: any, error?: string }`
+- [x] Include placeholder: `{{TOOL_LIST}}` for injecting tool definitions during code generation
+- [x] **Success Criteria**: Dynamically loads tools; validates inputs; handles errors; provides consistent response format
 
 ### Task 5.3: Create Connector Integration Template
 
@@ -46,7 +44,6 @@ This phase focuses on mcp server templates.
 - [ ] Include graceful degradation: if connector fails to initialize, log warning but continue (unless marked as required)
 - [ ] **Success Criteria**: Initializes connectors with credentials; manages connection pools; has health checks; handles failures
 
-
 ### Task 5.4: Build Entrypoint Script
 
 - [ ] Create `base/templates/entrypoint.sh.template` as bash script
@@ -59,4 +56,3 @@ This phase focuses on mcp server templates.
 - [ ] Support different run modes: accept command line arg (dev/prod), adjust logging verbosity accordingly
 - [ ] Execute main server: `exec node server.js "$@"` to replace shell process with Node
 - [ ] **Success Criteria**: Validates config before starting; sets up environment; logs startup info; handles signals properly
-

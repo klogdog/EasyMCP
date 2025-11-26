@@ -21,10 +21,11 @@ Successfully implemented the base MCP server template that serves as the entry p
 A comprehensive TypeScript template (590+ lines) with all required features:
 
 #### Configuration Loading
+
 ```typescript
 function loadConfig(): MCPConfig {
   const configPath = process.env.MCP_CONFIG_PATH;
-  const config = yaml.load(fs.readFileSync(configPath, 'utf8')) as MCPConfig;
+  const config = yaml.load(fs.readFileSync(configPath, "utf8")) as MCPConfig;
   validateConfig(config);
   return config;
 }
@@ -37,12 +38,29 @@ function loadConfig(): MCPConfig {
 - Logging configuration validation
 
 #### Logging System
+
 ```typescript
 class Logger {
-  debug(message: string, requestId?: string, context?: Record<string, unknown>): void;
-  info(message: string, requestId?: string, context?: Record<string, unknown>): void;
-  warn(message: string, requestId?: string, context?: Record<string, unknown>): void;
-  error(message: string, requestId?: string, context?: Record<string, unknown>): void;
+  debug(
+    message: string,
+    requestId?: string,
+    context?: Record<string, unknown>
+  ): void;
+  info(
+    message: string,
+    requestId?: string,
+    context?: Record<string, unknown>
+  ): void;
+  warn(
+    message: string,
+    requestId?: string,
+    context?: Record<string, unknown>
+  ): void;
+  error(
+    message: string,
+    requestId?: string,
+    context?: Record<string, unknown>
+  ): void;
   flush(): Promise<void>;
 }
 ```
@@ -54,11 +72,17 @@ class Logger {
 - Async flush for graceful shutdown
 
 #### JSON-RPC 2.0 Handler
+
 ```typescript
-async function handleJsonRpc(request: JsonRpcRequest, requestId: string, logger: Logger): Promise<JsonRpcResponse>
+async function handleJsonRpc(
+  request: JsonRpcRequest,
+  requestId: string,
+  logger: Logger
+): Promise<JsonRpcResponse>;
 ```
 
 Supported methods:
+
 - `initialize` - Returns protocol version and capabilities
 - `tools/list` - Lists all registered tools
 - `tools/call` - Invokes a tool by name
@@ -67,6 +91,7 @@ Supported methods:
 - `notifications/initialized` - Acknowledgement
 
 #### HTTP Server
+
 - Listens on configurable host and port
 - `/mcp` endpoint for JSON-RPC requests (POST)
 - `/health` endpoint for health checks (GET)
@@ -74,6 +99,7 @@ Supported methods:
 - Proper content-type headers
 
 #### Health Endpoint
+
 ```typescript
 function getHealthStatus(startTime: number): HealthStatus {
   return {
@@ -93,8 +119,9 @@ function getHealthStatus(startTime: number): HealthStatus {
 - Returns 200/503 based on status
 
 #### Graceful Shutdown
+
 ```typescript
-async function gracefulShutdown(signal: string): Promise<void>
+async function gracefulShutdown(signal: string): Promise<void>;
 ```
 
 - Handles SIGTERM and SIGINT
@@ -106,6 +133,7 @@ async function gracefulShutdown(signal: string): Promise<void>
 - Configurable timeout
 
 #### Error Handling
+
 - Unhandled exception handler
 - Unhandled rejection handler
 - Request-level try-catch middleware
@@ -113,6 +141,7 @@ async function gracefulShutdown(signal: string): Promise<void>
 - Proper error codes per JSON-RPC 2.0 spec
 
 #### Placeholder Markers
+
 ```
 {{TOOL_IMPORTS}}
 {{CONNECTOR_IMPORTS}}
@@ -123,21 +152,21 @@ async function gracefulShutdown(signal: string): Promise<void>
 
 Comprehensive test coverage with 57 tests:
 
-| Category | Tests |
-|----------|-------|
-| Template Structure | 4 |
-| Config Loading | 5 |
-| Logging | 6 |
-| JSON-RPC Handler | 7 |
-| HTTP Server | 4 |
-| Health Endpoint | 4 |
-| Graceful Shutdown | 8 |
-| Error Handling | 4 |
-| Registry | 6 |
-| Exports | 4 |
-| Placeholder Processing | 2 |
-| TypeScript Validity | 3 |
-| **Total** | **57** |
+| Category               | Tests  |
+| ---------------------- | ------ |
+| Template Structure     | 4      |
+| Config Loading         | 5      |
+| Logging                | 6      |
+| JSON-RPC Handler       | 7      |
+| HTTP Server            | 4      |
+| Health Endpoint        | 4      |
+| Graceful Shutdown      | 8      |
+| Error Handling         | 4      |
+| Registry               | 6      |
+| Exports                | 4      |
+| Placeholder Processing | 2      |
+| TypeScript Validity    | 3      |
+| **Total**              | **57** |
 
 ---
 
@@ -173,10 +202,10 @@ Total: 57
 
 ## Files Created
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `base/templates/server.ts.template` | 590+ | Main server template |
-| `base/test-server-template.ts` | 400+ | Test suite |
+| File                                | Lines | Description          |
+| ----------------------------------- | ----- | -------------------- |
+| `base/templates/server.ts.template` | 590+  | Main server template |
+| `base/test-server-template.ts`      | 400+  | Test suite           |
 
 ---
 
@@ -197,21 +226,21 @@ interface MCPConfig {
 }
 
 interface JsonRpcRequest {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: string | number | null;
   method: string;
   params?: unknown;
 }
 
 interface JsonRpcResponse {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: string | number | null;
   result?: unknown;
   error?: JsonRpcError;
 }
 
 interface HealthStatus {
-  status: 'ok' | 'degraded' | 'unhealthy';
+  status: "ok" | "degraded" | "unhealthy";
   uptime: number;
   timestamp: string;
   tools: string[];
@@ -240,6 +269,7 @@ interface Connector {
 ## Dependencies Used
 
 The template uses these npm packages:
+
 - `http` (Node.js built-in)
 - `fs` (Node.js built-in)
 - `js-yaml` - YAML parsing
@@ -258,10 +288,11 @@ The code generator will:
 5. Write the processed template as `server.ts`
 
 Example replacement:
+
 ```typescript
 // {{TOOL_IMPORTS}} becomes:
-import { calculator } from './tools/calculator';
-import { fileReader } from './tools/file-reader';
+import { calculator } from "./tools/calculator";
+import { fileReader } from "./tools/file-reader";
 
 // {{TOOL_REGISTRATION}} becomes:
 registerTool(calculator);
@@ -272,22 +303,23 @@ registerTool(fileReader);
 
 ## Success Criteria Verification
 
-| Criteria | Status |
-|----------|--------|
-| Template compiles to valid TypeScript | ✅ Passes syntax checks |
-| Supports config loading | ✅ YAML from env var |
-| Has health checks | ✅ /health endpoint |
-| Handles shutdown | ✅ SIGTERM/SIGINT handlers |
-| MCP protocol handler | ✅ JSON-RPC 2.0 on /mcp |
-| Logging with request IDs | ✅ UUID tracking |
-| Placeholder markers | ✅ Three markers included |
-| Error middleware | ✅ Global error handling |
+| Criteria                              | Status                     |
+| ------------------------------------- | -------------------------- |
+| Template compiles to valid TypeScript | ✅ Passes syntax checks    |
+| Supports config loading               | ✅ YAML from env var       |
+| Has health checks                     | ✅ /health endpoint        |
+| Handles shutdown                      | ✅ SIGTERM/SIGINT handlers |
+| MCP protocol handler                  | ✅ JSON-RPC 2.0 on /mcp    |
+| Logging with request IDs              | ✅ UUID tracking           |
+| Placeholder markers                   | ✅ Three markers included  |
+| Error middleware                      | ✅ Global error handling   |
 
 ---
 
 ## Next Steps
 
 **Task 5.2: Build Tool Integration Template**
+
 - Create `base/templates/tool-loader.ts.template`
 - Implement ToolRegistry class
 - Add dynamic import logic
