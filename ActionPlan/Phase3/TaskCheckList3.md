@@ -32,12 +32,12 @@ This phase focuses on user interaction & secrets.
 
 ### Task 3.3: Create Credential Schema Discovery
 
-- [ ] Extend `loader.ts` to parse credential requirements from module metadata
-- [ ] Look for `metadata.credentials` field in each module: `[{ name: string, type: 'api_key'|'oauth'|'password', required: boolean, description: string }]`
-- [ ] Parse TypeScript JSDoc comments: extract `@requires-credential` tags
-- [ ] For Python files, parse docstrings looking for `:credential` directives
-- [ ] Aggregate all requirements across modules: merge duplicates (e.g., multiple tools need same API key)
-- [ ] Build CredentialRequirement array with metadata: service name, whether it's optional, validation rules
-- [ ] Handle optional credentials: mark clearly in prompts, allow skipping
-- [ ] Create type definitions: `interface CredentialRequirement { name: string, type: CredentialType, required: boolean, description: string, validation?: RegExp }`
-- [ ] **Success Criteria**: Automatically discovers all credential needs; merges duplicates; distinguishes required vs optional
+- [x] Extend `loader.ts` to parse credential requirements from module metadata
+- [x] Look for `metadata.credentials` field in each module: `[{ name: string, type: 'api_key'|'oauth'|'password', required: boolean, description: string }]`
+- [x] Parse TypeScript JSDoc comments: extract `@requires-credential` tags
+- [x] For Python files, parse docstrings looking for `:credential` directives
+- [x] Aggregate all requirements across modules: merge duplicates (e.g., multiple tools need same API key)
+- [x] Build CredentialRequirement array with metadata: service name, whether it's optional, validation rules
+- [x] Handle optional credentials: mark clearly in prompts, allow skipping
+- [x] Create type definitions: `interface CredentialRequirement { name: string, type: CredentialType, required: boolean, description: string, validation?: RegExp }`
+- [x] **Success Criteria**: Automatically discovers all credential needs; merges duplicates; distinguishes required vs optional
