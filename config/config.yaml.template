@@ -1,0 +1,322 @@
+# =============================================================================
+# MCP Server Configuration Template
+# =============================================================================
+# 
+# This is a template configuration file for MCP servers.
+# Copy this file and customize it for your environment.
+#
+# Environment Variables:
+#   ${VAR_NAME}           - Required variable (fails if not set)
+#   ${VAR_NAME:-default}  - Optional variable with default value
+#
+# Usage:
+#   cp config.yaml.template config.yaml
+#   # Edit config.yaml with your settings
+#   # Set required environment variables
+#
+# For environment-specific settings, create:
+#   - config.development.yaml (local development)
+#   - config.production.yaml (production deployment)
+#   - config.staging.yaml (staging environment)
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Server Configuration
+# -----------------------------------------------------------------------------
+# Core server settings for binding and identification
+
+server:
+  # Unique name for this MCP server instance
+  # Used in logs and metrics for identification
+  name: mcp-server
+
+  # Server version (semantic versioning)
+  # Should match your package.json version
+  version: 0.1.0
+
+  # Host address to bind the server to
+  # Options:
+  #   localhost  - Only accept local connections (development)
+  #   0.0.0.0    - Accept connections from any interface (production)
+  #   127.0.0.1  - IPv4 loopback only
+  host: localhost
+
+  # TCP port for the server to listen on
+  # Use environment variable for flexibility: ${PORT:-8080}
+  port: 8080
+
+  # Enable CORS (Cross-Origin Resource Sharing)
+  # Set to true if your API is accessed from browsers on different domains
+  cors: false
+
+  # Maximum request body size
+  # Supports units: kb, mb, gb
+  # Examples: 100kb, 10mb, 1gb
+  maxRequestSize: 10mb
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+# Settings for database connection and pooling
+
+database:
+  # Database type/driver
+  # Options: postgres, sqlite, mysql
+  type: sqlite
+
+  # Database connection URL
+  # SECURITY WARNING: Use environment variables for sensitive URLs!
+  # Examples:
+  #   SQLite:   sqlite:./data/mcp.db
+  #   Postgres: postgres://user:pass@localhost:5432/mcp
+  #   MySQL:    mysql://user:pass@localhost:3306/mcp
+  url: ${DATABASE_URL:-sqlite:./data/mcp.db}
+
+  # Connection pool settings
+  # Tune based on your workload and database limits
+  pool:
+    # Minimum number of connections to maintain
+    min: 2
+    
+    # Maximum number of connections in the pool
+    # Should not exceed your database's connection limit
+    max: 10
+    
+    # Time (ms) before idle connections are closed
+    idleTimeout: 30000
+
+  # Query timeout in milliseconds
+  # Queries running longer than this will be cancelled
+  timeout: 5000
+
+# -----------------------------------------------------------------------------
+# Logging Configuration
+# -----------------------------------------------------------------------------
+# Settings for application logging and observability
+
+logging:
+  # Minimum log level to output
+  # Options: debug, info, warn, error
+  # Development: debug (verbose)
+  # Production: info or warn (less noise)
+  level: info
+
+  # Log output format
+  # Options:
+  #   json   - Structured JSON logs (best for production/log aggregation)
+  #   text   - Human-readable text
+  #   pretty - Colorized text (best for development)
+  format: json
+
+  # Where to send log output
+  # Options:
+  #   stdout  - Standard output (recommended for containers)
+  #   stderr  - Standard error
+  #   console - Console (with colors if supported)
+  #   file    - Write to file (requires filePath)
+  destination: stdout
+
+  # Log file path (only used when destination: file)
+  # filePath: /var/log/mcp-server.log
+
+  # Log rotation settings (for file destination)
+  # rotation:
+  #   maxSize: 10mb      # Rotate when file reaches this size
+  #   maxFiles: 5        # Keep this many rotated files
+  #   compress: true     # Compress rotated files
+
+# -----------------------------------------------------------------------------
+# Services Configuration
+# -----------------------------------------------------------------------------
+# External service integrations (APIs, third-party services)
+# 
+# SECURITY WARNING: Never commit API keys! Use environment variables.
+
+services:
+  # Example: OpenAI integration
+  # openai:
+  #   apiKey: ${OPENAI_API_KEY}
+  #   endpoint: https://api.openai.com/v1
+  #   timeout: 30000
+  #   rateLimit:
+  #     requestsPerMinute: 60
+  #     retryAfter: 1000
+
+  # Example: Custom API service
+  # myapi:
+  #   apiKey: ${MY_API_KEY}
+  #   endpoint: https://api.example.com/v1
+  #   timeout: 10000
+
+# -----------------------------------------------------------------------------
+# Connectors Configuration
+# -----------------------------------------------------------------------------
+# Data source and integration connectors
+
+connectors:
+  # Example: Database connector
+  # database-connector:
+  #   type: database
+  #   enabled: true
+  #   credentials:
+  #     url: ${DATABASE_CONNECTOR_URL}
+  #     username: ${DATABASE_CONNECTOR_USERNAME:-}
+  #     password: ${DATABASE_CONNECTOR_PASSWORD:-}
+  #   settings:
+  #     availableMethods:
+  #       - query
+  #       - insert
+  #       - update
+  #       - delete
+
+  # Example: Email connector
+  # email-connector:
+  #   type: email
+  #   enabled: true
+  #   credentials:
+  #     apiKey: ${EMAIL_API_KEY}
+  #     fromEmail: ${EMAIL_FROM:-noreply@example.com}
+  #   settings:
+  #     availableMethods:
+  #       - send
+  #       - receive
+  #       - list
+
+# -----------------------------------------------------------------------------
+# Feature Flags
+# -----------------------------------------------------------------------------
+# Toggle features on/off without code changes
+# Useful for gradual rollouts, A/B testing, or disabling features
+
+features:
+  # Core mathematical operations
+  add: true
+  subtract: true
+  multiply: true
+  divide: true
+  
+  # File operations
+  read: true
+  stat: true
+  list: true
+  
+  # Database integration
+  databaseIntegration: true
+  
+  # Email integration
+  emailIntegration: true
+  
+  # Experimental features (disabled by default)
+  # experimentalFeature: false
+
+# -----------------------------------------------------------------------------
+# Security Configuration
+# -----------------------------------------------------------------------------
+# Authentication, TLS, and rate limiting settings
+#
+# SECURITY WARNING: Always enable authentication in production!
+
+security:
+  # Authentication settings
+  authentication:
+    # Whether to require authentication for API requests
+    enabled: false
+    
+    # Authentication method
+    # Options: api-key, jwt, oauth2
+    # type: api-key
+    
+    # API key for authentication (use environment variable!)
+    # apiKey: ${API_KEY}
+
+  # TLS/SSL encryption settings
+  tls:
+    # Enable TLS encryption
+    # Recommended for production when not behind a reverse proxy
+    enabled: false
+    
+    # Path to TLS certificate file
+    # certFile: /path/to/cert.pem
+    
+    # Path to TLS private key file
+    # keyFile: /path/to/key.pem
+
+  # Rate limiting settings
+  rateLimit:
+    # Enable rate limiting
+    # Recommended to prevent abuse
+    enabled: true
+    
+    # Rate limit window in milliseconds (default: 1 minute)
+    windowMs: 60000
+    
+    # Maximum requests per window per client
+    maxRequests: 100
+
+# -----------------------------------------------------------------------------
+# Metrics Configuration
+# -----------------------------------------------------------------------------
+# Observability and monitoring settings
+
+metrics:
+  # Enable metrics collection and endpoint
+  enabled: true
+  
+  # HTTP path for metrics endpoint
+  # Common paths: /metrics, /health/metrics, /_metrics
+  path: /metrics
+  
+  # Include default Node.js and process metrics
+  # (memory, CPU, event loop, etc.)
+  includeDefaults: true
+
+# -----------------------------------------------------------------------------
+# Tools Configuration
+# -----------------------------------------------------------------------------
+# Tool-specific settings (timeouts, limits, etc.)
+
+tools:
+  # Example: Summarize tool configuration
+  # summarize:
+  #   enabled: true
+  #   timeout: 60000
+  #   settings:
+  #     maxInputLength: 100000
+  #     defaultModel: gpt-4
+
+  # Example: Translate tool configuration
+  # translate:
+  #   enabled: true
+  #   timeout: 30000
+  #   settings:
+  #     defaultLanguage: en
+  #     supportedLanguages:
+  #       - en
+  #       - es
+  #       - fr
+  #       - de
+  #       - ja
+  #       - zh
+
+# =============================================================================
+# Environment Variable Reference
+# =============================================================================
+#
+# Required Variables:
+#   DATABASE_URL     - Database connection string
+#   OPENAI_API_KEY   - OpenAI API key (if using AI features)
+#
+# Optional Variables:
+#   PORT             - Server port (default: 8080)
+#   NODE_ENV         - Environment (development/production)
+#   LOG_LEVEL        - Override log level
+#   API_KEY          - API key for authentication
+#
+# Example .env file:
+#   DATABASE_URL=postgres://user:pass@localhost:5432/mcp
+#   OPENAI_API_KEY=sk-...
+#   PORT=3000
+#   NODE_ENV=production
+#
+# =============================================================================
