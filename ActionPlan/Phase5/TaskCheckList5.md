@@ -8,15 +8,15 @@ This phase focuses on mcp server templates.
 
 ### Task 5.1: Create Base Server Template
 
-- [ ] Create `base/templates/server.ts.template` as a string template with placeholders
-- [ ] Implement MCP protocol handler: HTTP server listening on port from config, JSON-RPC 2.0 endpoint `/mcp`
-- [ ] Add config loading: `const config = yaml.load(fs.readFileSync(process.env.MCP_CONFIG_PATH))`, validate structure
-- [ ] Initialize logging: use winston or pino, configure level/format from config, add request ID tracking
-- [ ] Implement graceful shutdown: listen for SIGTERM/SIGINT, close connections, flush logs, exit cleanly
-- [ ] Add health endpoint: `/health` returns 200 with { status: 'ok', tools: [...], connectors: [...] }
-- [ ] Include error middleware: catch unhandled errors, log with context, return proper JSON-RPC error responses
-- [ ] Add placeholder markers: `{{TOOL_IMPORTS}}`, `{{CONNECTOR_IMPORTS}}`, `{{TOOL_REGISTRATION}}` for code generation
-- [ ] **Success Criteria**: Template compiles to valid TypeScript; supports config loading; has health checks; handles shutdown
+- [x] Create `base/templates/server.ts.template` as a string template with placeholders
+- [x] Implement MCP protocol handler: HTTP server listening on port from config, JSON-RPC 2.0 endpoint `/mcp`
+- [x] Add config loading: `const config = yaml.load(fs.readFileSync(process.env.MCP_CONFIG_PATH))`, validate structure
+- [x] Initialize logging: use winston or pino, configure level/format from config, add request ID tracking
+- [x] Implement graceful shutdown: listen for SIGTERM/SIGINT, close connections, flush logs, exit cleanly
+- [x] Add health endpoint: `/health` returns 200 with { status: 'ok', tools: [...], connectors: [...] }
+- [x] Include error middleware: catch unhandled errors, log with context, return proper JSON-RPC error responses
+- [x] Add placeholder markers: `{{TOOL_IMPORTS}}`, `{{CONNECTOR_IMPORTS}}`, `{{TOOL_REGISTRATION}}` for code generation
+- [x] **Success Criteria**: Template compiles to valid TypeScript; supports config loading; has health checks; handles shutdown
 
 
 ### Task 5.2: Build Tool Integration Template
