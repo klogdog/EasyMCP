@@ -1,0 +1,33 @@
+# Sample Test Configuration
+# Used for testing config parsing
+
+server:
+  name: test-mcp-server
+  version: "1.0.0"
+  description: A test MCP server for unit testing
+  port: 3000
+
+tools:
+  - name: calculator
+    enabled: true
+    description: Performs arithmetic operations
+  - name: summarizer
+    enabled: true
+    description: Summarizes text
+
+connectors:
+  - name: mock-api
+    enabled: true
+    config:
+      baseUrl: https://api.test.com
+      timeout: 3000
+
+logging:
+  level: debug
+  format: json
+  destination: stdout
+
+features:
+  enableCache: true
+  cacheTimeout: 300
+  maxConcurrentRequests: 10

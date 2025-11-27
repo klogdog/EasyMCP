@@ -1,0 +1,21 @@
+# Configuration with Environment Variables
+# Used for testing variable substitution
+
+server:
+  name: ${SERVER_NAME:-default-server}
+  port: ${SERVER_PORT:-3000}
+  environment: ${NODE_ENV:-development}
+
+database:
+  host: ${DB_HOST}
+  port: ${DB_PORT:-5432}
+  name: ${DB_NAME:-testdb}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+redis:
+  url: ${REDIS_URL:-redis://localhost:6379}
+
+api:
+  key: ${API_KEY}
+  secret: ${API_SECRET}

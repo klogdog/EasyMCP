@@ -1,0 +1,89 @@
+# MCP Server Dockerfile - Multi-stage (Node.js + Python)
+# Generated at: 2025-11-26T23:04:55.611Z
+# Server: mcp-server v0.1.0
+
+#############################
+# Stage 1: Node.js dependencies
+#############################
+FROM node:20-alpine AS node-builder
+
+WORKDIR /build
+
+# Copy package files and install Node.js dependencies
+COPY package*.json ./
+RUN npm install --production
+
+#############################
+# Stage 2: Python dependencies
+#############################
+FROM python:3.11-slim AS python-builder
+
+WORKDIR /build
+
+# Install Python dependencies
+RUN mkdir -p /build/python-deps
+
+#############################
+# Stage 3: Runtime image
+#############################
+# Using Node.js as base and adding Python
+FROM node:20-alpine AS runtime
+
+# Install Python runtime
+RUN apk add --no-cache python3 py3-pip
+
+# Metadata labels
+LABEL org.opencontainers.image.title="mcp-server"
+LABEL org.opencontainers.image.version="0.1.0"
+LABEL org.opencontainers.image.created="2025-11-26T23:04:55.611Z"
+LABEL org.opencontainers.image.description="MCP Server Container"
+LABEL mcp.server.tools="calculator,file-reader"
+LABEL mcp.server.connectors="database-connector,email-connector"
+LABEL mcp.server.capabilities="add,database-integration,divide,email-integration,list,multiply,read,stat,subtract"
+LABEL mcp.generator.version="0.1.0"
+
+# Set up working directory
+WORKDIR /app
+
+# Create directory structure
+RUN mkdir -p /app/tools /app/connectors /app/config
+
+# Copy Node.js dependencies from builder
+COPY --from=node-builder /build/node_modules /app/node_modules
+
+# Copy Python dependencies from builder
+COPY --from=python-builder /build/python-deps /usr/local/lib/python3.11/site-packages/
+
+# Copy tool files
+COPY tools/ /app/tools/
+
+# Copy connector files
+COPY connectors/ /app/connectors/
+
+# Copy MCP manifest
+COPY mcp-manifest.json /app/
+
+# Copy configuration (can be overridden via volume mount)
+COPY config/config.yaml /app/config/config.yaml
+
+# Copy server entry points
+COPY server.js /app/
+COPY server.py /app/
+
+# Set environment variables
+ENV NODE_ENV="production"
+ENV PYTHONUNBUFFERED="1"
+ENV PYTHONDONTWRITEBYTECODE="1"
+ENV MCP_CONFIG_PATH="/app/config/config.yaml"
+ENV PYTHONPATH="/app/tools:/app/connectors"
+
+# Expose port for MCP server
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
+
+# Start the MCP server
+ENTRYPOINT ["node", "server.js"]
+CMD []
