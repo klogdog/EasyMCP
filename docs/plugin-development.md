@@ -5,6 +5,7 @@ This guide explains how to create plugins for the MCP Generator to extend its fu
 ## Overview
 
 The plugin system allows you to:
+
 - Hook into the build lifecycle (before/after build, deploy)
 - Modify tool and connector loading
 - Transform generated manifests and Dockerfiles
@@ -16,21 +17,21 @@ The plugin system allows you to:
 ### Basic Plugin
 
 ```typescript
-import { Plugin } from '../plugin-system';
+import { Plugin } from "../plugin-system";
 
 const myPlugin: Plugin = {
   meta: {
-    name: 'my-plugin',
-    version: '1.0.0',
-    description: 'My custom plugin',
-    author: 'Your Name',
+    name: "my-plugin",
+    version: "1.0.0",
+    description: "My custom plugin",
+    author: "Your Name",
   },
   hooks: {
     async beforeBuild(context) {
-      console.log('Build starting...');
+      console.log("Build starting...");
     },
     async afterBuild(context) {
-      console.log('Build completed!');
+      console.log("Build completed!");
     },
   },
 };
@@ -40,14 +41,14 @@ export default myPlugin;
 
 ### Plugin Metadata
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✓ | Unique plugin identifier |
-| `version` | string | ✓ | Semantic version (e.g., "1.0.0") |
-| `description` | string | | Plugin description |
-| `author` | string | | Plugin author |
-| `dependencies` | string[] | | Other plugins this depends on |
-| `configSchema` | object | | JSON Schema for plugin config |
+| Field          | Type     | Required | Description                      |
+| -------------- | -------- | -------- | -------------------------------- |
+| `name`         | string   | ✓        | Unique plugin identifier         |
+| `version`      | string   | ✓        | Semantic version (e.g., "1.0.0") |
+| `description`  | string   |          | Plugin description               |
+| `author`       | string   |          | Plugin author                    |
+| `dependencies` | string[] |          | Other plugins this depends on    |
+| `configSchema` | object   |          | JSON Schema for plugin config    |
 
 ## Lifecycle Hooks
 
@@ -63,7 +64,7 @@ hooks: {
     // Access build information
     console.log('Tools:', context.tools.length);
     console.log('Output:', context.outputDir);
-    
+
     // Modify context (optional)
     return {
       context: {
@@ -102,7 +103,7 @@ hooks: {
   async beforeDeploy(context) {
     console.log(`Deploying ${context.imageName}:${context.imageTag}`);
     console.log(`Environment: ${context.environment}`);
-    
+
     // Can modify deployment config
     return {
       context: {
@@ -139,12 +140,12 @@ Called when each tool is loaded. Can modify tool configuration.
 hooks: {
   async onToolLoaded(context) {
     console.log(`Loaded tool: ${context.name}`);
-    
+
     // Validate tool
     if (!context.meta.description) {
       console.warn(`Tool ${context.name} has no description`);
     }
-    
+
     // Enhance tool metadata
     return {
       context: {
@@ -246,9 +247,9 @@ Return a `HookResult` to modify the context:
 
 ```typescript
 return {
-  context: modifiedContext,  // New context for subsequent hooks
-  continue: true,            // Continue to next plugin (default)
-  data: { custom: 'data' },  // Pass data to next hook
+  context: modifiedContext, // New context for subsequent hooks
+  continue: true, // Continue to next plugin (default)
+  data: { custom: "data" }, // Pass data to next hook
 };
 ```
 
@@ -273,21 +274,21 @@ hooks: {
 ```typescript
 const myPlugin: Plugin = {
   meta: {
-    name: 'my-plugin',
-    version: '1.0.0',
+    name: "my-plugin",
+    version: "1.0.0",
     configSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        enabled: { type: 'boolean', default: true },
-        apiKey: { type: 'string' },
+        enabled: { type: "boolean", default: true },
+        apiKey: { type: "string" },
         options: {
-          type: 'object',
+          type: "object",
           properties: {
-            verbose: { type: 'boolean' },
+            verbose: { type: "boolean" },
           },
         },
       },
-      required: ['apiKey'],
+      required: ["apiKey"],
     },
   },
   // ...
@@ -338,26 +339,26 @@ meta: {
 ### Logger Plugin
 
 ```typescript
-import { Plugin } from '../plugin-system';
+import { Plugin } from "../plugin-system";
 
 let startTime: number;
 
 const loggerPlugin: Plugin = {
   meta: {
-    name: 'logger',
-    version: '1.0.0',
+    name: "logger",
+    version: "1.0.0",
   },
   hooks: {
     async beforeBuild(context) {
       startTime = Date.now();
       console.log(`[BUILD] Starting with ${context.tools.length} tools`);
     },
-    
+
     async afterBuild(context) {
       const duration = Date.now() - startTime;
       console.log(`[BUILD] Completed in ${duration}ms`);
     },
-    
+
     async onToolLoaded(context) {
       console.log(`[TOOL] Loaded: ${context.name}`);
     },
@@ -370,12 +371,12 @@ export default loggerPlugin;
 ### Validator Plugin
 
 ```typescript
-import { Plugin } from '../plugin-system';
+import { Plugin } from "../plugin-system";
 
 const validatorPlugin: Plugin = {
   meta: {
-    name: 'validator',
-    version: '1.0.0',
+    name: "validator",
+    version: "1.0.0",
   },
   hooks: {
     async onToolLoaded(context) {
@@ -383,19 +384,19 @@ const validatorPlugin: Plugin = {
       if (!/^[a-z][a-z0-9-]*$/.test(context.name)) {
         throw new Error(`Invalid tool name: ${context.name}`);
       }
-      
+
       // Check for required metadata
       if (!context.meta.description) {
         console.warn(`Tool ${context.name} should have a description`);
       }
-      
+
       return { context };
     },
-    
+
     async onManifestGenerated(manifest) {
       // Validate manifest structure
       if (!manifest.name) {
-        throw new Error('Manifest must have a name');
+        throw new Error("Manifest must have a name");
       }
       return manifest;
     },
@@ -408,7 +409,7 @@ export default validatorPlugin;
 ### Notifier Plugin
 
 ```typescript
-import { Plugin } from '../plugin-system';
+import { Plugin } from "../plugin-system";
 
 interface SlackConfig {
   webhookUrl: string;
@@ -419,35 +420,35 @@ let config: SlackConfig;
 
 const notifierPlugin: Plugin = {
   meta: {
-    name: 'slack-notifier',
-    version: '1.0.0',
+    name: "slack-notifier",
+    version: "1.0.0",
     configSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        webhookUrl: { type: 'string' },
-        channel: { type: 'string' },
+        webhookUrl: { type: "string" },
+        channel: { type: "string" },
       },
-      required: ['webhookUrl'],
+      required: ["webhookUrl"],
     },
   },
   hooks: {
     async onInit(cfg) {
       config = cfg as SlackConfig;
     },
-    
+
     async afterBuild(context) {
       await fetch(config.webhookUrl, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           channel: config.channel,
           text: `Build completed: ${context.tools.length} tools`,
         }),
       });
     },
-    
+
     async afterDeploy(context) {
       await fetch(config.webhookUrl, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           channel: config.channel,
           text: `Deployed ${context.imageName}:${context.imageTag}`,
@@ -476,8 +477,8 @@ const plugins = registry.listPlugins();
 
 ```typescript
 const loader = registry.getLoader();
-loader.disablePlugin('my-plugin');
-loader.enablePlugin('my-plugin');
+loader.disablePlugin("my-plugin");
+loader.enablePlugin("my-plugin");
 ```
 
 ### Get Hook Runner
@@ -510,11 +511,17 @@ Each plugin should do one thing well:
 
 ```typescript
 // ✅ Good: Single responsibility
-const loggerPlugin = { /* logging only */ };
-const validatorPlugin = { /* validation only */ };
+const loggerPlugin = {
+  /* logging only */
+};
+const validatorPlugin = {
+  /* validation only */
+};
 
 // ❌ Bad: Too many responsibilities
-const everythingPlugin = { /* logging, validation, notification, ... */ };
+const everythingPlugin = {
+  /* logging, validation, notification, ... */
+};
 ```
 
 ### 2. Handle Errors Gracefully
@@ -564,6 +571,7 @@ meta: {
 ### 5. Version Your Plugins
 
 Follow semantic versioning:
+
 - Major: Breaking changes
 - Minor: New features
 - Patch: Bug fixes
@@ -573,17 +581,17 @@ Follow semantic versioning:
 ### Unit Testing
 
 ```typescript
-import { describe, it, expect } from '@jest/globals';
-import myPlugin from './my-plugin';
+import { describe, it, expect } from "@jest/globals";
+import myPlugin from "./my-plugin";
 
-describe('My Plugin', () => {
-  it('should log on build start', async () => {
+describe("My Plugin", () => {
+  it("should log on build start", async () => {
     const logs: string[] = [];
     console.log = (msg) => logs.push(msg);
-    
+
     await myPlugin.hooks.beforeBuild?.({ tools: [] });
-    
-    expect(logs).toContain('Build starting...');
+
+    expect(logs).toContain("Build starting...");
   });
 });
 ```
@@ -592,9 +600,9 @@ describe('My Plugin', () => {
 
 ```typescript
 const registry = new PluginRegistry({
-  pluginDir: './test-plugins',
+  pluginDir: "./test-plugins",
   pluginConfig: {
-    'my-plugin': { setting: 'value' },
+    "my-plugin": { setting: "value" },
   },
 });
 

@@ -31,11 +31,11 @@ NODE_ENV=development node server.js
 ### Programmatic Configuration
 
 ```typescript
-import { HotReloadManager } from './hot-reload';
+import { HotReloadManager } from "./hot-reload";
 
 const manager = new HotReloadManager({
   enabled: true,
-  watchDirs: ['./tools', './connectors'],
+  watchDirs: ["./tools", "./connectors"],
   debounceMs: 100,
   gracefulFallback: true,
 });
@@ -65,39 +65,40 @@ services:
 ```
 
 Run with:
+
 ```bash
 docker-compose -f docker-compose.dev.yml up
 ```
 
 ## Configuration Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `enabled` | Auto-detect | Enable hot reload (false in production) |
-| `watchDirs` | `['./tools', './connectors']` | Directories to watch |
-| `patterns` | `['**/*.ts', '**/*.js']` | File patterns to watch |
-| `debounceMs` | `100` | Delay before triggering reload |
-| `configFile` | `undefined` | Config file to watch |
-| `drainTimeoutMs` | `5000` | Request drain timeout during reload |
-| `gracefulFallback` | `true` | Keep old version on reload error |
+| Option             | Default                       | Description                             |
+| ------------------ | ----------------------------- | --------------------------------------- |
+| `enabled`          | Auto-detect                   | Enable hot reload (false in production) |
+| `watchDirs`        | `['./tools', './connectors']` | Directories to watch                    |
+| `patterns`         | `['**/*.ts', '**/*.js']`      | File patterns to watch                  |
+| `debounceMs`       | `100`                         | Delay before triggering reload          |
+| `configFile`       | `undefined`                   | Config file to watch                    |
+| `drainTimeoutMs`   | `5000`                        | Request drain timeout during reload     |
+| `gracefulFallback` | `true`                        | Keep old version on reload error        |
 
 ## Reload Events
 
 Subscribe to reload events for custom handling:
 
 ```typescript
-manager.onReload('my-handler', async (event) => {
+manager.onReload("my-handler", async (event) => {
   switch (event.type) {
-    case 'before':
-      console.log('About to reload:', event.modules);
+    case "before":
+      console.log("About to reload:", event.modules);
       // Cleanup before reload
       break;
-    case 'after':
-      console.log('Reload complete:', event.result);
+    case "after":
+      console.log("Reload complete:", event.result);
       // Re-initialize after reload
       break;
-    case 'error':
-      console.error('Reload failed:', event.error);
+    case "error":
+      console.error("Reload failed:", event.error);
       break;
   }
 });
@@ -107,14 +108,14 @@ manager.onReload('my-handler', async (event) => {
 
 When running in dev mode, admin endpoints are available:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/__dev/status` | GET | Server status and metrics |
-| `/__dev/reload` | POST | Trigger manual reload |
-| `/__dev/reload/last` | GET | Last reload result |
-| `/__dev/tools` | GET | List registered tools |
-| `/__dev/connectors` | GET | List registered connectors |
-| `/__dev/config` | GET | Current configuration |
+| Endpoint             | Method | Description                |
+| -------------------- | ------ | -------------------------- |
+| `/__dev/status`      | GET    | Server status and metrics  |
+| `/__dev/reload`      | POST   | Trigger manual reload      |
+| `/__dev/reload/last` | GET    | Last reload result         |
+| `/__dev/tools`       | GET    | List registered tools      |
+| `/__dev/connectors`  | GET    | List registered connectors |
+| `/__dev/config`      | GET    | Current configuration      |
 
 ### Example: Trigger Manual Reload
 
@@ -123,6 +124,7 @@ curl -X POST http://localhost:3000/__dev/reload
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -140,6 +142,7 @@ curl http://localhost:3000/__dev/status
 ```
 
 Response:
+
 ```json
 {
   "uptime": 3600000,
@@ -177,6 +180,7 @@ When `gracefulFallback` is enabled (default):
 4. Other modules still reload successfully
 
 Example error response:
+
 ```json
 {
   "success": false,
@@ -193,15 +197,15 @@ Example error response:
 
 ## CLI Options
 
-| Option | Description |
-|--------|-------------|
-| `--dev` | Enable development mode (hot reload, admin endpoints, verbose logging) |
-| `--port <port>` | Server port (default: 3000) |
-| `--host <host>` | Host to bind (default: 0.0.0.0) |
-| `--watch <dirs>` | Comma-separated directories to watch |
-| `--config <file>` | Config file path for hot reload |
-| `--no-hot-reload` | Disable hot reload even in dev mode |
-| `--quiet` | Disable verbose logging |
+| Option            | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| `--dev`           | Enable development mode (hot reload, admin endpoints, verbose logging) |
+| `--port <port>`   | Server port (default: 3000)                                            |
+| `--host <host>`   | Host to bind (default: 0.0.0.0)                                        |
+| `--watch <dirs>`  | Comma-separated directories to watch                                   |
+| `--config <file>` | Config file path for hot reload                                        |
+| `--no-hot-reload` | Disable hot reload even in dev mode                                    |
+| `--quiet`         | Disable verbose logging                                                |
 
 ## Best Practices
 
@@ -229,8 +233,8 @@ Register cleanup in beforeReload for resources:
 ```typescript
 let connection: Connection | null = null;
 
-manager.onReload('db-cleanup', async (event) => {
-  if (event.type === 'before' && connection) {
+manager.onReload("db-cleanup", async (event) => {
+  if (event.type === "before" && connection) {
     await connection.close();
     connection = null;
   }
@@ -242,16 +246,16 @@ manager.onReload('db-cleanup', async (event) => {
 Include reload tests in your test suite:
 
 ```typescript
-it('should survive hot reload', async () => {
+it("should survive hot reload", async () => {
   // Make initial request
-  const result1 = await client.callTool('calculator', { a: 1, b: 2 });
-  
+  const result1 = await client.callTool("calculator", { a: 1, b: 2 });
+
   // Trigger reload
-  await fetch('http://localhost:3000/__dev/reload', { method: 'POST' });
-  
+  await fetch("http://localhost:3000/__dev/reload", { method: "POST" });
+
   // Make another request
-  const result2 = await client.callTool('calculator', { a: 3, b: 4 });
-  
+  const result2 = await client.callTool("calculator", { a: 3, b: 4 });
+
   expect(result1.result).toBe(3);
   expect(result2.result).toBe(7);
 });
@@ -263,7 +267,7 @@ Hot reload should be disabled in production, but you can monitor reload readines
 
 ```typescript
 // Check if server is ready for potential rolling update
-const status = await fetch('/health/ready');
+const status = await fetch("/health/ready");
 if (status.ok) {
   // Safe to proceed with deployment
 }

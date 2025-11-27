@@ -20,7 +20,7 @@ import {
   MCPTestClient,
   MockToolRegistry,
   expect,
-} from './base/testing';
+} from "./base/testing";
 
 // Create test harness
 const harness = new TestHarness();
@@ -36,11 +36,13 @@ await context.mcpClient.initialize();
 
 // List tools
 const tools = await context.mcpClient.listTools();
-console.log('Available tools:', tools);
+console.log("Available tools:", tools);
 
 // Call a tool
-const result = await context.mcpClient.callTool('summarize', { text: 'Hello world' });
-console.log('Result:', result);
+const result = await context.mcpClient.callTool("summarize", {
+  text: "Hello world",
+});
+console.log("Result:", result);
 
 // Cleanup
 await harness.cleanup();
@@ -70,20 +72,20 @@ console.log(context.container?.baseUrl);
 const healthy = await harness.waitForAllHealthy(30000);
 
 if (!healthy) {
-  throw new Error('Server did not become healthy in time');
+  throw new Error("Server did not become healthy in time");
 }
 ```
 
 ### Port Management
 
 ```typescript
-import { findAvailablePort, waitForPort } from './base/testing';
+import { findAvailablePort, waitForPort } from "./base/testing";
 
 // Find an available port
 const port = await findAvailablePort(10000);
 
 // Wait for a port to become available
-const available = await waitForPort(3000, 'localhost', 5000);
+const available = await waitForPort(3000, "localhost", 5000);
 ```
 
 ## MCP Protocol Client
@@ -91,12 +93,12 @@ const available = await waitForPort(3000, 'localhost', 5000);
 ### Initialization
 
 ```typescript
-const client = new MCPTestClient('http://localhost:3000');
+const client = new MCPTestClient("http://localhost:3000");
 
 // Initialize the connection (required before other operations)
 const initResult = await client.initialize();
-console.log('Protocol version:', initResult.protocolVersion);
-console.log('Capabilities:', initResult.capabilities);
+console.log("Protocol version:", initResult.protocolVersion);
+console.log("Capabilities:", initResult.capabilities);
 ```
 
 ### Tool Operations
@@ -111,17 +113,17 @@ for (const tool of tools) {
 }
 
 // Call a tool
-const result = await client.callTool('summarize', {
-  text: 'Long text to summarize...',
+const result = await client.callTool("summarize", {
+  text: "Long text to summarize...",
 });
 
 // Handle errors
 try {
-  await client.callTool('nonexistent', {});
+  await client.callTool("nonexistent", {});
 } catch (error) {
   if (error instanceof MCPError) {
-    console.log('Error code:', error.code);
-    console.log('Error message:', error.message);
+    console.log("Error code:", error.code);
+    console.log("Error message:", error.message);
   }
 }
 ```
@@ -140,8 +142,8 @@ const prompts = await client.listPrompts();
 
 ```typescript
 // Send a custom request
-const result = await client.sendRequest('custom/method', {
-  customParam: 'value',
+const result = await client.sendRequest("custom/method", {
+  customParam: "value",
 });
 ```
 
@@ -154,38 +156,40 @@ const result = await client.sendRequest('custom/method', {
 const mockRegistry = new MockToolRegistry(toolRegistry);
 
 // Mock a tool with custom handler
-mockRegistry.mockTool('summarize', async (args) => {
-  return { summary: 'Mocked summary' };
+mockRegistry.mockTool("summarize", async (args) => {
+  return { summary: "Mocked summary" };
 });
 
 // Mock a tool to return a specific value
-mockRegistry.mockToolReturn('translate', { translated: 'Hola mundo' });
+mockRegistry.mockToolReturn("translate", { translated: "Hola mundo" });
 
 // Mock a tool to throw an error
-mockRegistry.mockToolError('broken-tool', 'This tool is broken');
+mockRegistry.mockToolError("broken-tool", "This tool is broken");
 
 // Mock a tool for a single invocation
-mockRegistry.mockToolOnce('once-tool', async () => ({ result: 'first call only' }));
+mockRegistry.mockToolOnce("once-tool", async () => ({
+  result: "first call only",
+}));
 ```
 
 ### Verifying Invocations
 
 ```typescript
 // Check if tool was called
-expect(mockRegistry.wasCalled('summarize')).toBe(true);
+expect(mockRegistry.wasCalled("summarize")).toBe(true);
 
 // Get call count
-expect(mockRegistry.getCallCount('summarize')).toBe(3);
+expect(mockRegistry.getCallCount("summarize")).toBe(3);
 
 // Check if called with specific arguments
-expect(mockRegistry.wasCalledWith('summarize', { text: 'hello' })).toBe(true);
+expect(mockRegistry.wasCalledWith("summarize", { text: "hello" })).toBe(true);
 
 // Get all invocations
-const invocations = mockRegistry.getInvocationsFor('summarize');
+const invocations = mockRegistry.getInvocationsFor("summarize");
 for (const inv of invocations) {
-  console.log('Args:', inv.args);
-  console.log('Result:', inv.result);
-  console.log('Duration:', inv.duration);
+  console.log("Args:", inv.args);
+  console.log("Result:", inv.result);
+  console.log("Duration:", inv.duration);
 }
 ```
 
@@ -193,7 +197,7 @@ for (const inv of invocations) {
 
 ```typescript
 // Restore a single tool
-mockRegistry.restoreTool('summarize');
+mockRegistry.restoreTool("summarize");
 
 // Restore all tools
 mockRegistry.restoreAll();
@@ -215,11 +219,11 @@ import {
   assertContainsText,
   assertNoError,
   expect,
-} from './base/testing';
+} from "./base/testing";
 
 // Assert response structure
 const result = assertToolResponse(response, {
-  content: [{ type: 'text', text: 'Expected text' }],
+  content: [{ type: "text", text: "Expected text" }],
   isError: false,
 });
 
@@ -228,7 +232,7 @@ if (!result.passed) {
 }
 
 // Assert contains text (exact or regex)
-assertContainsText(response, 'summary');
+assertContainsText(response, "summary");
 assertContainsText(response, /\d+ words/);
 
 // Assert no error
@@ -238,10 +242,10 @@ assertNoError(response);
 ### Error Assertions
 
 ```typescript
-import { assertErrorCode, MCPError } from './base/testing';
+import { assertErrorCode, MCPError } from "./base/testing";
 
 try {
-  await client.callTool('invalid', {});
+  await client.callTool("invalid", {});
 } catch (error) {
   // Assert specific error code
   const result = assertErrorCode(error, -32601); // METHOD_NOT_FOUND
@@ -252,7 +256,7 @@ try {
 ### Connector Assertions
 
 ```typescript
-import { assertConnected, assertDisconnected } from './base/testing';
+import { assertConnected, assertDisconnected } from "./base/testing";
 
 // Assert connector is connected
 assertConnected(databaseConnector);
@@ -264,15 +268,15 @@ assertDisconnected(emailConnector);
 ### Jest-style Matchers
 
 ```typescript
-import { expect } from './base/testing';
+import { expect } from "./base/testing";
 
 // Match tool response
 expect(response).toMatchToolResponse({
-  content: [{ type: 'text' }],
+  content: [{ type: "text" }],
 });
 
 // Contains text
-expect(response).toContainText('expected text');
+expect(response).toContainText("expected text");
 
 // Error code
 expect(error).toHaveErrorCode(-32600);
@@ -285,14 +289,14 @@ expect(connector).not.toBeDisconnected();
 ### Schema Validation
 
 ```typescript
-import { assertMatchesSchema } from './base/testing';
+import { assertMatchesSchema } from "./base/testing";
 
 const schema = {
-  type: 'object',
-  required: ['name', 'version'],
+  type: "object",
+  required: ["name", "version"],
   properties: {
-    name: { type: 'string' },
-    version: { type: 'string' },
+    name: { type: "string" },
+    version: { type: "string" },
   },
 };
 
@@ -342,6 +346,7 @@ The load tests measure:
 ### Thresholds
 
 Default k6 thresholds:
+
 - P95 latency < 500ms
 - Error rate < 5%
 - HTTP failure rate < 1%
@@ -349,15 +354,15 @@ Default k6 thresholds:
 ## Example Test Suite
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 import {
   TestHarness,
   MCPTestClient,
   MockToolRegistry,
   expect as mcpExpect,
-} from './base/testing';
+} from "./base/testing";
 
-describe('MCP Server Integration Tests', () => {
+describe("MCP Server Integration Tests", () => {
   let harness: TestHarness;
   let client: MCPTestClient;
 
@@ -365,7 +370,7 @@ describe('MCP Server Integration Tests', () => {
     harness = new TestHarness();
     const context = await harness.createContext(3000);
     client = context.mcpClient!;
-    
+
     await harness.waitForAllHealthy(30000);
     await client.initialize();
   });
@@ -374,13 +379,13 @@ describe('MCP Server Integration Tests', () => {
     await harness.cleanup();
   });
 
-  describe('Tool Discovery', () => {
-    it('should list available tools', async () => {
+  describe("Tool Discovery", () => {
+    it("should list available tools", async () => {
       const tools = await client.listTools();
-      
+
       expect(tools).toBeInstanceOf(Array);
       expect(tools.length).toBeGreaterThan(0);
-      
+
       for (const tool of tools) {
         expect(tool.name).toBeDefined();
         expect(tool.description).toBeDefined();
@@ -388,31 +393,31 @@ describe('MCP Server Integration Tests', () => {
     });
   });
 
-  describe('Tool Execution', () => {
-    it('should execute summarize tool', async () => {
-      const result = await client.callTool('summarize', {
-        text: 'This is a long text that needs to be summarized.',
+  describe("Tool Execution", () => {
+    it("should execute summarize tool", async () => {
+      const result = await client.callTool("summarize", {
+        text: "This is a long text that needs to be summarized.",
       });
 
       mcpExpect(result).not.toHaveErrorCode(-32000);
       mcpExpect(result).toContainText(/summary/i);
     });
 
-    it('should handle invalid tool name', async () => {
+    it("should handle invalid tool name", async () => {
       try {
-        await client.callTool('nonexistent', {});
-        fail('Should have thrown an error');
+        await client.callTool("nonexistent", {});
+        fail("Should have thrown an error");
       } catch (error) {
         mcpExpect(error).toHaveErrorCode(-32601);
       }
     });
   });
 
-  describe('Error Handling', () => {
-    it('should return proper error for invalid params', async () => {
+  describe("Error Handling", () => {
+    it("should return proper error for invalid params", async () => {
       try {
-        await client.callTool('summarize', {});
-        fail('Should have thrown an error');
+        await client.callTool("summarize", {});
+        fail("Should have thrown an error");
       } catch (error) {
         mcpExpect(error).toHaveErrorCode(-32602);
       }

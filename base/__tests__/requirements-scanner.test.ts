@@ -273,15 +273,15 @@ describe('scanDirectory', () => {
     });
 
     // Helper to create mock dir entries
-    const mockFile = (name: string) => ({ 
-        name, 
-        isDirectory: () => false, 
-        isFile: () => true 
+    const mockFile = (name: string) => ({
+        name,
+        isDirectory: () => false,
+        isFile: () => true
     });
-    const mockDir = (name: string) => ({ 
-        name, 
-        isDirectory: () => true, 
-        isFile: () => false 
+    const mockDir = (name: string) => ({
+        name,
+        isDirectory: () => true,
+        isFile: () => false
     });
 
     it('should scan all Python files in directory', () => {
