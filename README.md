@@ -94,12 +94,12 @@ curl -X POST http://localhost:8080/tools/summarize \
 
 Now that you have your first MCP server running, explore these guides:
 
-| Guide | Description |
-|-------|-------------|
-| [Tool Development](docs/tool-development.md) | Create custom tools with validation and best practices |
-| [Connector Development](docs/connector-development.md) | Build connectors for external services |
-| [Configuration](docs/configuration.md) | Configure database, logging, and features |
-| [Deployment](docs/deployment.md) | Deploy to Docker, Kubernetes, or cloud |
+| Guide                                                  | Description                                            |
+| ------------------------------------------------------ | ------------------------------------------------------ |
+| [Tool Development](docs/tool-development.md)           | Create custom tools with validation and best practices |
+| [Connector Development](docs/connector-development.md) | Build connectors for external services                 |
+| [Configuration](docs/configuration.md)                 | Configure database, logging, and features              |
+| [Deployment](docs/deployment.md)                       | Deploy to Docker, Kubernetes, or cloud                 |
 
 ---
 
