@@ -1,0 +1,62 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "base/main.ts",
+    "base/cli.ts",
+    "base/loader.ts",
+    "base/generator.ts",
+    "base/dockerizer.ts",
+    "base/config-generator.ts",
+    "base/config-parser.ts",
+    "base/validator.ts",
+    "base/prompt.ts",
+    "base/secrets.ts",
+    "base/registry.ts",
+    "base/docker-client.ts",
+    "tools/summarize.ts",
+    "tools/classify.ts",
+    "tools/translate.ts",
+    "connectors/gmail.ts",
+    "connectors/notion.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "name": "EasyMCP API Documentation",
+  "includeVersion": true,
+  "readme": "README.md",
+  "exclude": [
+    "**/node_modules/**",
+    "**/__tests__/**",
+    "**/test-*.ts",
+    "**/dist/**",
+    "**/coverage/**"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "skipErrorChecking": true,
+  "theme": "default",
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Core",
+    "Tools",
+    "Connectors",
+    "Configuration",
+    "Utilities",
+    "*"
+  ],
+  "sort": [
+    "source-order"
+  ],
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "plugin": []
+}
