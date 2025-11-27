@@ -1,0 +1,338 @@
+/**
+ * Python Executor Template
+ * 
+ * Generated bridge code for executing Python tools from the MCP server.
+ * This module provides a seamless interface between Node.js and Python.
+ */
+
+import { spawn } from 'child_process';
+import * as path from 'path';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface PythonToolConfig {
+  name: string;
+  scriptPath: string;
+  functionName: string;
+  timeout: number;
+}
+
+interface ExecutionResult {
+  success: boolean;
+  result?: unknown;
+  error?: string;
+  stdout: string;
+  stderr: string;
+  duration: number;
+}
+
+// ============================================================================
+// Python Executor
+// ============================================================================
+
+class PythonExecutor {
+  private pythonPath: string;
+  private toolsDir: string;
+  private defaultTimeout: number;
+
+  constructor(options: { pythonPath?: string; toolsDir?: string; timeout?: number } = {}) {
+    this.pythonPath = options.pythonPath ?? 'python3';
+    this.toolsDir = options.toolsDir ?? path.join(__dirname, 'tools');
+    this.defaultTimeout = options.timeout ?? 30000;
+  }
+
+  /**
+   * Execute a Python tool
+   */
+  async execute(
+    config: PythonToolConfig,
+    args: Record<string, unknown>
+  ): Promise<ExecutionResult> {
+    const startTime = Date.now();
+    const scriptPath = path.join(this.toolsDir, config.scriptPath);
+
+    // Generate wrapper script
+    const wrapper = this.generateWrapper(
+      scriptPath,
+      config.functionName,
+      args
+    );
+
+    return new Promise((resolve) => {
+      let stdout = '';
+      let stderr = '';
+      let timedOut = false;
+
+      const proc = spawn(this.pythonPath, ['-c', wrapper], {
+        cwd: this.toolsDir,
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1',
+          PYTHONPATH: this.toolsDir,
+        },
+      });
+
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        proc.kill('SIGTERM');
+      }, config.timeout || this.defaultTimeout);
+
+      proc.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        clearTimeout(timeout);
+        const duration = Date.now() - startTime;
+
+        if (timedOut) {
+          resolve({
+            success: false,
+            error: `Execution timed out after ${config.timeout || this.defaultTimeout}ms`,
+            stdout,
+            stderr,
+            duration,
+          });
+          return;
+        }
+
+        if (code !== 0) {
+          resolve({
+            success: false,
+            error: this.parseError(stderr) || `Process exited with code ${code}`,
+            stdout,
+            stderr,
+            duration,
+          });
+          return;
+        }
+
+        try {
+          const result = this.parseOutput(stdout);
+          resolve({
+            success: result.success,
+            result: result.result,
+            error: result.error,
+            stdout,
+            stderr,
+            duration,
+          });
+        } catch (e) {
+          resolve({
+            success: false,
+            error: `Failed to parse output: ${e}`,
+            stdout,
+            stderr,
+            duration,
+          });
+        }
+      });
+
+      proc.on('error', (error) => {
+        clearTimeout(timeout);
+        resolve({
+          success: false,
+          error: `Failed to spawn Python: ${error.message}`,
+          stdout,
+          stderr,
+          duration: Date.now() - startTime,
+        });
+      });
+    });
+  }
+
+  private generateWrapper(
+    scriptPath: string,
+    functionName: string,
+    args: Record<string, unknown>
+  ): string {
+    const argsJson = JSON.stringify(args).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const moduleName = path.basename(scriptPath, '.py');
+
+    return `
+import sys
+import json
+import importlib.util
+
+# Load the module
+spec = importlib.util.spec_from_file_location("${moduleName}", "${scriptPath}")
+module = importlib.util.module_from_spec(spec)
+sys.modules["${moduleName}"] = module
+spec.loader.exec_module(module)
+
+# Get the function
+func = getattr(module, "${functionName}")
+
+# Execute with args
+try:
+    args = json.loads('${argsJson}')
+    result = func(**args) if isinstance(args, dict) else func(args)
+    
+    # Handle async
+    import asyncio
+    if asyncio.iscoroutine(result):
+        result = asyncio.get_event_loop().run_until_complete(result)
+    
+    print(json.dumps({"success": True, "result": result}))
+except Exception as e:
+    import traceback
+    print(json.dumps({
+        "success": False, 
+        "error": str(e),
+        "traceback": traceback.format_exc()
+    }))
+    sys.exit(1)
+`;
+  }
+
+  private parseOutput(stdout: string): { success: boolean; result?: unknown; error?: string } {
+    const lines = stdout.trim().split('\n');
+    const lastLine = lines[lines.length - 1];
+    return JSON.parse(lastLine);
+  }
+
+  private parseError(stderr: string): string | null {
+    // Extract Python exception message
+    const lines = stderr.trim().split('\n');
+    const errorLine = lines.find(l => l.includes('Error:') || l.includes('Exception:'));
+    return errorLine || null;
+  }
+}
+
+// ============================================================================
+// Tool Registry
+// ============================================================================
+
+interface Tool {
+  name: string;
+  description: string;
+  inputSchema: object;
+  language: 'typescript' | 'python';
+  handler: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+const tools: Map<string, Tool> = new Map();
+const pythonExecutor = new PythonExecutor();
+
+/**
+ * Register a TypeScript tool
+ */
+function registerTsTool(
+  name: string,
+  description: string,
+  inputSchema: object,
+  handler: (args: Record<string, unknown>) => Promise<unknown>
+): void {
+  tools.set(name, {
+    name,
+    description,
+    inputSchema,
+    language: 'typescript',
+    handler,
+  });
+}
+
+/**
+ * Register a Python tool
+ */
+function registerPyTool(
+  name: string,
+  description: string,
+  inputSchema: object,
+  scriptPath: string,
+  functionName: string,
+  timeout = 30000
+): void {
+  const handler = async (args: Record<string, unknown>) => {
+    const result = await pythonExecutor.execute(
+      { name, scriptPath, functionName, timeout },
+      args
+    );
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Python tool execution failed');
+    }
+    
+    return result.result;
+  };
+
+  tools.set(name, {
+    name,
+    description,
+    inputSchema,
+    language: 'python',
+    handler,
+  });
+}
+
+/**
+ * Execute a tool by name
+ */
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const tool = tools.get(name);
+  
+  if (!tool) {
+    throw new Error(`Unknown tool: ${name}`);
+  }
+
+  try {
+    const result = await tool.handler(args);
+    return {
+      content: [{
+        type: 'text',
+        text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+      }],
+    };
+  } catch (error) {
+    throw new Error(`Tool ${name} failed: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
+/**
+ * List all available tools
+ */
+function listTools(): Array<{
+  name: string;
+  description: string;
+  inputSchema: object;
+}> {
+  return Array.from(tools.values()).map(t => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: t.inputSchema,
+  }));
+}
+
+/**
+ * Get tool statistics
+ */
+function getToolStats(): { total: number; typescript: number; python: number } {
+  const all = Array.from(tools.values());
+  return {
+    total: all.length,
+    typescript: all.filter(t => t.language === 'typescript').length,
+    python: all.filter(t => t.language === 'python').length,
+  };
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export {
+  PythonExecutor,
+  registerTsTool,
+  registerPyTool,
+  executeTool,
+  listTools,
+  getToolStats,
+};

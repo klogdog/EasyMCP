@@ -1,0 +1,784 @@
+/**
+ * Hot Reload Template
+ * 
+ * Provides development mode hot reloading for MCP servers:
+ * - File watching for tools and connectors
+ * - Dynamic module reloading without restart
+ * - Configuration hot reload
+ * - Graceful error handling
+ * - Request queueing during reload
+ */
+
+import { EventEmitter } from 'events';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface HotReloadConfig {
+  /** Enable hot reload (default: false in production) */
+  enabled: boolean;
+  /** Directories to watch for changes */
+  watchDirs: string[];
+  /** File patterns to watch (glob patterns) */
+  patterns: string[];
+  /** Debounce delay in ms before triggering reload */
+  debounceMs: number;
+  /** Config file to watch for changes */
+  configFile?: string;
+  /** Maximum time to wait for in-flight requests during reload (ms) */
+  drainTimeoutMs: number;
+  /** Enable graceful degradation on reload errors */
+  gracefulFallback: boolean;
+}
+
+export interface ModuleInfo {
+  /** Module file path */
+  path: string;
+  /** Last modification time */
+  mtime: number;
+  /** Module name */
+  name: string;
+  /** Module type: tool or connector */
+  type: 'tool' | 'connector';
+  /** Error if module failed to load */
+  error?: string;
+}
+
+export interface ReloadResult {
+  success: boolean;
+  reloadedModules: string[];
+  failedModules: Array<{ name: string; error: string }>;
+  duration: number;
+  timestamp: Date;
+}
+
+export interface ReloadEvent {
+  type: 'before' | 'after' | 'error';
+  modules: string[];
+  error?: Error;
+  result?: ReloadResult;
+}
+
+export type ReloadEventHandler = (event: ReloadEvent) => void | Promise<void>;
+
+// ============================================================================
+// File Watcher (Lightweight Implementation)
+// ============================================================================
+
+/**
+ * Simple file watcher using fs.watch
+ * In production, consider using chokidar for better cross-platform support
+ */
+export class FileWatcher extends EventEmitter {
+  private watchers: Map<string, fs.FSWatcher> = new Map();
+  private patterns: RegExp[];
+  private debounceTimeout: NodeJS.Timeout | null = null;
+  private pendingChanges: Set<string> = new Set();
+  private debounceMs: number;
+
+  constructor(patterns: string[] = ['**/*.ts', '**/*.js'], debounceMs: number = 100) {
+    super();
+    this.patterns = patterns.map(p => this.globToRegex(p));
+    this.debounceMs = debounceMs;
+  }
+
+  /**
+   * Convert glob pattern to regex
+   */
+  private globToRegex(glob: string): RegExp {
+    const escaped = glob
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*\*/g, '.*')
+      .replace(/\*/g, '[^/]*');
+    return new RegExp(`^${escaped}$`);
+  }
+
+  /**
+   * Check if file matches watched patterns
+   */
+  private matchesPattern(file: string): boolean {
+    return this.patterns.some(pattern => pattern.test(file));
+  }
+
+  /**
+   * Watch a directory for changes
+   */
+  watch(dir: string): void {
+    if (this.watchers.has(dir)) {
+      return;
+    }
+
+    try {
+      const watcher = fs.watch(dir, { recursive: true }, (eventType, filename) => {
+        if (filename && this.matchesPattern(filename)) {
+          const fullPath = path.join(dir, filename);
+          this.handleChange(fullPath, eventType);
+        }
+      });
+
+      watcher.on('error', (error) => {
+        this.emit('error', error);
+      });
+
+      this.watchers.set(dir, watcher);
+      this.emit('watching', dir);
+    } catch (error) {
+      this.emit('error', error);
+    }
+  }
+
+  /**
+   * Handle file change with debouncing
+   */
+  private handleChange(filePath: string, eventType: string): void {
+    this.pendingChanges.add(filePath);
+
+    if (this.debounceTimeout) {
+      clearTimeout(this.debounceTimeout);
+    }
+
+    this.debounceTimeout = setTimeout(() => {
+      const changes = Array.from(this.pendingChanges);
+      this.pendingChanges.clear();
+      this.emit('change', changes, eventType);
+    }, this.debounceMs);
+  }
+
+  /**
+   * Stop watching all directories
+   */
+  close(): void {
+    for (const [dir, watcher] of this.watchers) {
+      watcher.close();
+      this.watchers.delete(dir);
+    }
+
+    if (this.debounceTimeout) {
+      clearTimeout(this.debounceTimeout);
+      this.debounceTimeout = null;
+    }
+  }
+}
+
+// ============================================================================
+// Module Cache Manager
+// ============================================================================
+
+/**
+ * Manages module cache for hot reloading
+ */
+export class ModuleCacheManager {
+  private moduleCache: Map<string, ModuleInfo> = new Map();
+  private originalModules: Map<string, unknown> = new Map();
+
+  /**
+   * Get cached module info
+   */
+  getModuleInfo(modulePath: string): ModuleInfo | undefined {
+    return this.moduleCache.get(modulePath);
+  }
+
+  /**
+   * Check if module needs reload based on mtime
+   */
+  needsReload(modulePath: string): boolean {
+    try {
+      const stats = fs.statSync(modulePath);
+      const cached = this.moduleCache.get(modulePath);
+      
+      if (!cached) {
+        return true;
+      }
+
+      return stats.mtimeMs > cached.mtime;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Invalidate module from Node.js require cache
+   */
+  invalidateModule(modulePath: string): void {
+    const resolvedPath = require.resolve(modulePath);
+    
+    // Store original module for fallback
+    if (require.cache[resolvedPath]) {
+      this.originalModules.set(resolvedPath, require.cache[resolvedPath]?.exports);
+    }
+
+    // Invalidate the module and its children
+    const mod = require.cache[resolvedPath];
+    if (mod) {
+      // Invalidate parent references
+      if (mod.parent) {
+        const idx = mod.parent.children.indexOf(mod);
+        if (idx !== -1) {
+          mod.parent.children.splice(idx, 1);
+        }
+      }
+      
+      // Delete from cache
+      delete require.cache[resolvedPath];
+    }
+  }
+
+  /**
+   * Reload a module and update cache
+   */
+  async reloadModule(modulePath: string, type: 'tool' | 'connector'): Promise<unknown> {
+    const stats = fs.statSync(modulePath);
+    const name = path.basename(modulePath, path.extname(modulePath));
+
+    try {
+      // Invalidate old module
+      this.invalidateModule(modulePath);
+      
+      // Load new module
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const module = require(modulePath);
+      
+      // Update cache
+      this.moduleCache.set(modulePath, {
+        path: modulePath,
+        mtime: stats.mtimeMs,
+        name,
+        type,
+      });
+
+      return module.default || module;
+    } catch (error) {
+      // Record error in cache
+      this.moduleCache.set(modulePath, {
+        path: modulePath,
+        mtime: stats.mtimeMs,
+        name,
+        type,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get fallback module (original version)
+   */
+  getFallback(modulePath: string): unknown | undefined {
+    const resolvedPath = require.resolve(modulePath);
+    return this.originalModules.get(resolvedPath);
+  }
+
+  /**
+   * Clear all cached modules
+   */
+  clear(): void {
+    this.moduleCache.clear();
+    this.originalModules.clear();
+  }
+}
+
+// ============================================================================
+// Request Queue Manager
+// ============================================================================
+
+/**
+ * Queues requests during reload for zero-downtime updates
+ */
+export class RequestQueueManager {
+  private isReloading = false;
+  private queue: Array<{
+    resolve: (value: boolean) => void;
+    reject: (error: Error) => void;
+    timeout: NodeJS.Timeout;
+  }> = [];
+  private drainTimeoutMs: number;
+
+  constructor(drainTimeoutMs: number = 5000) {
+    this.drainTimeoutMs = drainTimeoutMs;
+  }
+
+  /**
+   * Start reload mode - new requests will be queued
+   */
+  startReload(): void {
+    this.isReloading = true;
+  }
+
+  /**
+   * End reload mode - process queued requests
+   */
+  endReload(): void {
+    this.isReloading = false;
+    
+    // Resolve all queued requests
+    for (const item of this.queue) {
+      clearTimeout(item.timeout);
+      item.resolve(true);
+    }
+    this.queue = [];
+  }
+
+  /**
+   * Cancel reload - reject queued requests
+   */
+  cancelReload(error: Error): void {
+    this.isReloading = false;
+    
+    for (const item of this.queue) {
+      clearTimeout(item.timeout);
+      item.reject(error);
+    }
+    this.queue = [];
+  }
+
+  /**
+   * Wait for reload to complete (or proceed immediately if not reloading)
+   */
+  async waitForReload(): Promise<boolean> {
+    if (!this.isReloading) {
+      return true;
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        const idx = this.queue.findIndex(q => q.resolve === resolve);
+        if (idx !== -1) {
+          this.queue.splice(idx, 1);
+        }
+        reject(new Error('Request timeout during reload'));
+      }, this.drainTimeoutMs);
+
+      this.queue.push({ resolve, reject, timeout });
+    });
+  }
+
+  /**
+   * Check if currently reloading
+   */
+  get reloading(): boolean {
+    return this.isReloading;
+  }
+
+  /**
+   * Get number of queued requests
+   */
+  get queueLength(): number {
+    return this.queue.length;
+  }
+}
+
+// ============================================================================
+// Hot Reload Manager
+// ============================================================================
+
+/**
+ * Main hot reload manager
+ */
+export class HotReloadManager extends EventEmitter {
+  private config: HotReloadConfig;
+  private watcher: FileWatcher;
+  private cacheManager: ModuleCacheManager;
+  private requestQueue: RequestQueueManager;
+  private toolRegistry: Map<string, unknown>;
+  private connectorRegistry: Map<string, unknown>;
+  private reloadHandlers: Map<string, ReloadEventHandler> = new Map();
+  private lastReload: ReloadResult | null = null;
+
+  constructor(
+    config: Partial<HotReloadConfig> = {},
+    toolRegistry: Map<string, unknown> = new Map(),
+    connectorRegistry: Map<string, unknown> = new Map()
+  ) {
+    super();
+
+    this.config = {
+      enabled: config.enabled ?? process.env.NODE_ENV !== 'production',
+      watchDirs: config.watchDirs ?? ['./tools', './connectors'],
+      patterns: config.patterns ?? ['**/*.ts', '**/*.js'],
+      debounceMs: config.debounceMs ?? 100,
+      configFile: config.configFile,
+      drainTimeoutMs: config.drainTimeoutMs ?? 5000,
+      gracefulFallback: config.gracefulFallback ?? true,
+    };
+
+    this.toolRegistry = toolRegistry;
+    this.connectorRegistry = connectorRegistry;
+    this.watcher = new FileWatcher(this.config.patterns, this.config.debounceMs);
+    this.cacheManager = new ModuleCacheManager();
+    this.requestQueue = new RequestQueueManager(this.config.drainTimeoutMs);
+
+    this.setupWatcher();
+  }
+
+  /**
+   * Setup file watcher event handlers
+   */
+  private setupWatcher(): void {
+    this.watcher.on('change', async (files: string[]) => {
+      await this.handleFileChanges(files);
+    });
+
+    this.watcher.on('error', (error) => {
+      this.emit('error', error);
+    });
+
+    this.watcher.on('watching', (dir) => {
+      this.emit('watching', dir);
+    });
+  }
+
+  /**
+   * Handle file changes
+   */
+  private async handleFileChanges(files: string[]): Promise<void> {
+    if (!this.config.enabled) {
+      return;
+    }
+
+    const toolFiles = files.filter(f => f.includes('/tools/') || f.includes('\\tools\\'));
+    const connectorFiles = files.filter(f => f.includes('/connectors/') || f.includes('\\connectors\\'));
+    const configFiles = this.config.configFile 
+      ? files.filter(f => f.endsWith(this.config.configFile!))
+      : [];
+
+    if (toolFiles.length > 0 || connectorFiles.length > 0) {
+      await this.reloadModules([
+        ...toolFiles.map(f => ({ path: f, type: 'tool' as const })),
+        ...connectorFiles.map(f => ({ path: f, type: 'connector' as const })),
+      ]);
+    }
+
+    if (configFiles.length > 0) {
+      await this.reloadConfig();
+    }
+  }
+
+  /**
+   * Start watching for changes
+   */
+  start(): void {
+    if (!this.config.enabled) {
+      this.emit('disabled', 'Hot reload is disabled in production');
+      return;
+    }
+
+    for (const dir of this.config.watchDirs) {
+      const absoluteDir = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
+      if (fs.existsSync(absoluteDir)) {
+        this.watcher.watch(absoluteDir);
+      }
+    }
+
+    // Watch config file if specified
+    if (this.config.configFile) {
+      const configDir = path.dirname(this.config.configFile);
+      if (fs.existsSync(configDir)) {
+        this.watcher.watch(configDir);
+      }
+    }
+
+    this.emit('started');
+  }
+
+  /**
+   * Stop watching
+   */
+  stop(): void {
+    this.watcher.close();
+    this.emit('stopped');
+  }
+
+  /**
+   * Register reload event handler
+   */
+  onReload(id: string, handler: ReloadEventHandler): void {
+    this.reloadHandlers.set(id, handler);
+  }
+
+  /**
+   * Remove reload event handler
+   */
+  offReload(id: string): void {
+    this.reloadHandlers.delete(id);
+  }
+
+  /**
+   * Emit reload events to handlers
+   */
+  private async emitReloadEvent(event: ReloadEvent): Promise<void> {
+    for (const handler of this.reloadHandlers.values()) {
+      try {
+        await handler(event);
+      } catch (error) {
+        this.emit('handlerError', error);
+      }
+    }
+    this.emit('reload', event);
+  }
+
+  /**
+   * Reload specified modules
+   */
+  async reloadModules(
+    modules: Array<{ path: string; type: 'tool' | 'connector' }>
+  ): Promise<ReloadResult> {
+    const startTime = Date.now();
+    const moduleNames = modules.map(m => path.basename(m.path));
+
+    // Emit before event
+    await this.emitReloadEvent({
+      type: 'before',
+      modules: moduleNames,
+    });
+
+    // Start request queueing
+    this.requestQueue.startReload();
+
+    const reloadedModules: string[] = [];
+    const failedModules: Array<{ name: string; error: string }> = [];
+
+    try {
+      for (const module of modules) {
+        const name = path.basename(module.path, path.extname(module.path));
+        
+        try {
+          if (!fs.existsSync(module.path)) {
+            // Module was deleted - remove from registry
+            if (module.type === 'tool') {
+              this.toolRegistry.delete(name);
+            } else {
+              this.connectorRegistry.delete(name);
+            }
+            reloadedModules.push(`${name} (removed)`);
+            continue;
+          }
+
+          // Check if module needs reload
+          if (!this.cacheManager.needsReload(module.path)) {
+            continue;
+          }
+
+          // Reload module
+          const loadedModule = await this.cacheManager.reloadModule(module.path, module.type);
+          
+          // Update registry
+          if (module.type === 'tool') {
+            this.toolRegistry.set(name, loadedModule);
+          } else {
+            this.connectorRegistry.set(name, loadedModule);
+          }
+
+          reloadedModules.push(name);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          if (this.config.gracefulFallback) {
+            // Try to restore original module
+            const fallback = this.cacheManager.getFallback(module.path);
+            if (fallback) {
+              if (module.type === 'tool') {
+                this.toolRegistry.set(name, fallback);
+              } else {
+                this.connectorRegistry.set(name, fallback);
+              }
+              failedModules.push({ 
+                name, 
+                error: `${errorMessage} (using fallback)` 
+              });
+            } else {
+              failedModules.push({ name, error: errorMessage });
+            }
+          } else {
+            failedModules.push({ name, error: errorMessage });
+          }
+        }
+      }
+
+      const result: ReloadResult = {
+        success: failedModules.length === 0,
+        reloadedModules,
+        failedModules,
+        duration: Date.now() - startTime,
+        timestamp: new Date(),
+      };
+
+      this.lastReload = result;
+
+      // End request queueing
+      this.requestQueue.endReload();
+
+      // Emit after event
+      await this.emitReloadEvent({
+        type: 'after',
+        modules: moduleNames,
+        result,
+      });
+
+      return result;
+    } catch (error) {
+      // Cancel reload with error
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.requestQueue.cancelReload(err);
+
+      // Emit error event
+      await this.emitReloadEvent({
+        type: 'error',
+        modules: moduleNames,
+        error: err,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Reload configuration file
+   */
+  async reloadConfig(): Promise<void> {
+    if (!this.config.configFile) {
+      return;
+    }
+
+    this.emit('configReloading');
+
+    try {
+      const configContent = fs.readFileSync(this.config.configFile, 'utf-8');
+      const config = JSON.parse(configContent);
+      
+      this.emit('configReloaded', config);
+    } catch (error) {
+      this.emit('configError', error);
+    }
+  }
+
+  /**
+   * Manually trigger reload for specific modules
+   */
+  async triggerReload(modulePaths?: string[]): Promise<ReloadResult> {
+    if (!modulePaths || modulePaths.length === 0) {
+      // Reload all modules in watch directories
+      const allModules: Array<{ path: string; type: 'tool' | 'connector' }> = [];
+      
+      for (const dir of this.config.watchDirs) {
+        const absoluteDir = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
+        if (fs.existsSync(absoluteDir)) {
+          const files = fs.readdirSync(absoluteDir);
+          const type = dir.includes('tool') ? 'tool' as const : 'connector' as const;
+          
+          for (const file of files) {
+            if (file.endsWith('.ts') || file.endsWith('.js')) {
+              allModules.push({
+                path: path.join(absoluteDir, file),
+                type,
+              });
+            }
+          }
+        }
+      }
+      
+      return this.reloadModules(allModules);
+    }
+
+    const modules = modulePaths.map(p => ({
+      path: p,
+      type: (p.includes('tool') ? 'tool' : 'connector') as 'tool' | 'connector',
+    }));
+
+    return this.reloadModules(modules);
+  }
+
+  /**
+   * Wait for any ongoing reload to complete
+   */
+  async waitForReload(): Promise<boolean> {
+    return this.requestQueue.waitForReload();
+  }
+
+  /**
+   * Get last reload result
+   */
+  getLastReload(): ReloadResult | null {
+    return this.lastReload;
+  }
+
+  /**
+   * Get reload status
+   */
+  getStatus(): {
+    enabled: boolean;
+    reloading: boolean;
+    queuedRequests: number;
+    lastReload: ReloadResult | null;
+    watchedDirs: string[];
+  } {
+    return {
+      enabled: this.config.enabled,
+      reloading: this.requestQueue.reloading,
+      queuedRequests: this.requestQueue.queueLength,
+      lastReload: this.lastReload,
+      watchedDirs: this.config.watchDirs,
+    };
+  }
+}
+
+// ============================================================================
+// Development Server Middleware
+// ============================================================================
+
+/**
+ * Create hot reload HTTP endpoints
+ */
+export function createHotReloadEndpoints(manager: HotReloadManager) {
+  return {
+    /**
+     * GET /admin/reload/status - Get reload status
+     */
+    status: () => manager.getStatus(),
+
+    /**
+     * POST /admin/reload - Trigger manual reload
+     */
+    reload: async (modulePaths?: string[]) => {
+      return manager.triggerReload(modulePaths);
+    },
+
+    /**
+     * GET /admin/reload/last - Get last reload result
+     */
+    lastReload: () => manager.getLastReload(),
+  };
+}
+
+// ============================================================================
+// Factory
+// ============================================================================
+
+/**
+ * Create and start hot reload manager for development
+ */
+export function createDevServer(
+  options: {
+    toolRegistry?: Map<string, unknown>;
+    connectorRegistry?: Map<string, unknown>;
+    configFile?: string;
+    watchDirs?: string[];
+  } = {}
+): HotReloadManager {
+  const manager = new HotReloadManager(
+    {
+      enabled: true,
+      configFile: options.configFile,
+      watchDirs: options.watchDirs ?? ['./tools', './connectors'],
+      gracefulFallback: true,
+    },
+    options.toolRegistry ?? new Map(),
+    options.connectorRegistry ?? new Map()
+  );
+
+  manager.start();
+  return manager;
+}

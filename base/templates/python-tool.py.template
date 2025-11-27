@@ -1,0 +1,293 @@
+"""
+Python Tool Template
+
+This template demonstrates how to create a Python tool for the MCP server.
+Python tools can be loaded alongside TypeScript tools in the same server.
+
+Tool Metadata Format:
+--------------------
+The tool's metadata is extracted from docstrings using a special format:
+
+@tool: tool_name
+@description: Description of what the tool does
+@param name: type - Description of the parameter
+@returns: Description of the return value
+@timeout: 30000 (optional, in milliseconds)
+
+Example Usage:
+-------------
+1. Copy this template to your tools directory
+2. Rename the file (e.g., my_tool.py)
+3. Implement your tool function
+4. The MCP generator will auto-discover and load the tool
+"""
+
+from typing import Any, Dict, List, Optional
+import json
+import asyncio
+
+
+def example_tool(
+    input_text: str,
+    options: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Example MCP Tool
+
+    A demonstration tool showing how to create Python tools for MCP servers.
+    This tool processes text and returns analysis results.
+
+    @tool: example_tool
+    @description: Processes text input and returns analysis results
+    @param input_text: str - The text to process
+    @param options: object - Optional processing options
+    @returns: Analysis results including word count and character count
+    @timeout: 30000
+    
+    Args:
+        input_text: The text to analyze
+        options: Optional dict with processing options:
+            - lowercase: bool - Convert to lowercase
+            - strip: bool - Strip whitespace
+            
+    Returns:
+        Dict containing analysis results
+    """
+    # Apply options
+    options = options or {}
+    text = input_text
+    
+    if options.get('lowercase', False):
+        text = text.lower()
+    
+    if options.get('strip', True):
+        text = text.strip()
+    
+    # Analyze text
+    words = text.split()
+    lines = text.split('\n')
+    
+    return {
+        'original_length': len(input_text),
+        'processed_length': len(text),
+        'word_count': len(words),
+        'line_count': len(lines),
+        'character_count': len(text.replace(' ', '')),
+        'options_applied': list(options.keys()) if options else [],
+    }
+
+
+async def async_example_tool(
+    items: List[str],
+    delay_ms: int = 100
+) -> Dict[str, Any]:
+    """
+    Async Example Tool
+
+    Demonstrates async Python tools that can perform non-blocking operations.
+
+    @tool: async_example_tool
+    @description: Processes items asynchronously with configurable delay
+    @param items: array - List of items to process
+    @param delay_ms: number - Delay between items in milliseconds (default: 100)
+    @returns: Processing results with timing information
+    @timeout: 60000
+    
+    Args:
+        items: List of strings to process
+        delay_ms: Millisecond delay between processing each item
+        
+    Returns:
+        Dict with processed items and timing info
+    """
+    import time
+    
+    start_time = time.time()
+    results = []
+    
+    for i, item in enumerate(items):
+        await asyncio.sleep(delay_ms / 1000)  # Convert to seconds
+        results.append({
+            'index': i,
+            'item': item,
+            'processed_at': time.time() - start_time,
+        })
+    
+    return {
+        'total_items': len(items),
+        'total_time_ms': (time.time() - start_time) * 1000,
+        'results': results,
+    }
+
+
+def data_transform_tool(
+    data: Dict[str, Any],
+    transformations: List[str]
+) -> Dict[str, Any]:
+    """
+    Data Transformation Tool
+
+    Applies a series of transformations to input data.
+
+    @tool: data_transform
+    @description: Apply transformations to structured data
+    @param data: object - The input data to transform
+    @param transformations: array - List of transformation operations
+    @returns: Transformed data with applied operations log
+    @timeout: 30000
+    
+    Supported transformations:
+    - 'flatten': Flatten nested objects
+    - 'sort_keys': Sort object keys alphabetically
+    - 'stringify_values': Convert all values to strings
+    - 'remove_nulls': Remove null/None values
+    
+    Args:
+        data: Input dictionary to transform
+        transformations: List of transformation names
+        
+    Returns:
+        Dict with transformed data and operations applied
+    """
+    result = data.copy()
+    applied = []
+    
+    for transform in transformations:
+        if transform == 'flatten':
+            result = _flatten_dict(result)
+            applied.append('flatten')
+        elif transform == 'sort_keys':
+            result = dict(sorted(result.items()))
+            applied.append('sort_keys')
+        elif transform == 'stringify_values':
+            result = {k: str(v) for k, v in result.items()}
+            applied.append('stringify_values')
+        elif transform == 'remove_nulls':
+            result = {k: v for k, v in result.items() if v is not None}
+            applied.append('remove_nulls')
+    
+    return {
+        'data': result,
+        'transformations_applied': applied,
+        'original_key_count': len(data),
+        'result_key_count': len(result),
+    }
+
+
+def _flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
+    """Helper function to flatten nested dictionaries."""
+    items: List[tuple] = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(_flatten_dict(v, new_key, sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+# ============================================================================
+# Tool Discovery Support
+# ============================================================================
+
+def get_tool_metadata() -> List[Dict[str, Any]]:
+    """
+    Returns metadata for all tools in this module.
+    
+    This function is called by the MCP generator to discover tools.
+    Returns a list of tool definitions with name, description, and schema.
+    """
+    return [
+        {
+            'name': 'example_tool',
+            'description': 'Processes text input and returns analysis results',
+            'inputSchema': {
+                'type': 'object',
+                'properties': {
+                    'input_text': {
+                        'type': 'string',
+                        'description': 'The text to process',
+                    },
+                    'options': {
+                        'type': 'object',
+                        'description': 'Optional processing options',
+                        'properties': {
+                            'lowercase': {'type': 'boolean'},
+                            'strip': {'type': 'boolean'},
+                        },
+                    },
+                },
+                'required': ['input_text'],
+            },
+            'function': 'example_tool',
+            'timeout': 30000,
+        },
+        {
+            'name': 'async_example_tool',
+            'description': 'Processes items asynchronously with configurable delay',
+            'inputSchema': {
+                'type': 'object',
+                'properties': {
+                    'items': {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                        'description': 'List of items to process',
+                    },
+                    'delay_ms': {
+                        'type': 'number',
+                        'description': 'Delay between items in milliseconds',
+                        'default': 100,
+                    },
+                },
+                'required': ['items'],
+            },
+            'function': 'async_example_tool',
+            'timeout': 60000,
+        },
+        {
+            'name': 'data_transform',
+            'description': 'Apply transformations to structured data',
+            'inputSchema': {
+                'type': 'object',
+                'properties': {
+                    'data': {
+                        'type': 'object',
+                        'description': 'The input data to transform',
+                    },
+                    'transformations': {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                        'description': 'List of transformation operations',
+                    },
+                },
+                'required': ['data', 'transformations'],
+            },
+            'function': 'data_transform_tool',
+            'timeout': 30000,
+        },
+    ]
+
+
+# ============================================================================
+# Main Entry Point (for testing)
+# ============================================================================
+
+if __name__ == '__main__':
+    # Test the tools
+    print("Testing example_tool:")
+    result = example_tool("Hello World!", {'lowercase': True})
+    print(json.dumps(result, indent=2))
+    
+    print("\nTesting data_transform_tool:")
+    result = data_transform_tool(
+        {'a': 1, 'b': {'c': 2, 'd': None}},
+        ['flatten', 'remove_nulls', 'stringify_values']
+    )
+    print(json.dumps(result, indent=2))
+    
+    print("\nTesting async_example_tool:")
+    result = asyncio.run(async_example_tool(['item1', 'item2', 'item3'], 50))
+    print(json.dumps(result, indent=2))
+    
+    print("\nTool metadata:")
+    print(json.dumps(get_tool_metadata(), indent=2))
