@@ -1,0 +1,98 @@
+groups:
+  - name: mcp-server-alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: MCPHighErrorRate
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[5m])) 
+            / 
+            sum(rate(mcp_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on MCP server"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.example.com/runbooks/mcp-high-error-rate"
+
+      # Slow response time alert
+      - alert: MCPSlowResponses
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(mcp_tool_duration_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MCP server responding slowly"
+          description: "P95 latency is {{ $value | humanizeDuration }} over the last 5 minutes"
+          runbook_url: "https://docs.example.com/runbooks/mcp-slow-responses"
+
+      # Connector down alert
+      - alert: MCPConnectorDown
+        expr: mcp_connector_status == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MCP connector {{ $labels.connector_name }} is down"
+          description: "Connector {{ $labels.connector_name }} has been disconnected for more than 2 minutes"
+          runbook_url: "https://docs.example.com/runbooks/mcp-connector-down"
+
+      # No requests alert (server may be stuck)
+      - alert: MCPNoRequests
+        expr: |
+          sum(rate(mcp_requests_total[5m])) == 0
+          and
+          sum(mcp_requests_total) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MCP server receiving no requests"
+          description: "No requests received in the last 10 minutes, server may be unreachable"
+          runbook_url: "https://docs.example.com/runbooks/mcp-no-requests"
+
+      # Tool execution failures
+      - alert: MCPToolExecutionFailures
+        expr: |
+          (
+            sum(rate(mcp_tool_invocations_total{status="error"}[5m])) by (tool_name)
+            / 
+            sum(rate(mcp_tool_invocations_total[5m])) by (tool_name)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tool {{ $labels.tool_name }} has high failure rate"
+          description: "Tool {{ $labels.tool_name }} failure rate is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.example.com/runbooks/mcp-tool-failures"
+
+      # Memory usage high
+      - alert: MCPHighMemoryUsage
+        expr: |
+          process_resident_memory_bytes / 1024 / 1024 > 500
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MCP server using high memory"
+          description: "Memory usage is {{ $value | humanize }}MB"
+          runbook_url: "https://docs.example.com/runbooks/mcp-high-memory"
+
+      # Active connections spike
+      - alert: MCPConnectionSpike
+        expr: |
+          mcp_active_connections > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of active connections"
+          description: "{{ $value }} active connections, may indicate connection leak or high load"
+          runbook_url: "https://docs.example.com/runbooks/mcp-connection-spike"
