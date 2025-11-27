@@ -107,6 +107,13 @@ const PACKAGE_MAPPINGS: Record<string, string> = {
     'torch': 'torch',
     'tensorflow': 'tensorflow',
     'keras': 'keras',
+    // Flask extensions
+    'flask_cors': 'flask-cors',
+    'flask_sqlalchemy': 'flask-sqlalchemy',
+    'flask_login': 'flask-login',
+    'flask_wtf': 'flask-wtf',
+    'flask_migrate': 'flask-migrate',
+    'flask_restful': 'flask-restful',
 };
 
 // ============================================================================
@@ -368,7 +375,11 @@ export function generateRequirementsTxt(
         lines.push('');
     }
 
-    lines.push(...result.requirements);
+    // Sort requirements alphabetically
+    const sortedRequirements = [...result.requirements].sort((a, b) =>
+        a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+    lines.push(...sortedRequirements);
 
     return lines.join('\n') + '\n';
 }
