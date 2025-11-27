@@ -1,0 +1,34 @@
+# Sample Test Configuration
+# Used for testing config parsing
+
+server:
+  name: test-mcp-server
+  version: "1.0.0"
+  host: localhost
+  port: 3000
+
+tools:
+  calculator:
+    enabled: true
+    timeout: 5000
+  summarizer:
+    enabled: true
+    timeout: 10000
+
+connectors:
+  mock-api:
+    type: api
+    enabled: true
+    settings:
+      baseUrl: https://api.test.com
+      timeout: 3000
+
+logging:
+  level: debug
+  format: json
+  destination: stdout
+
+features:
+  enableCache: true
+  cacheTimeout: true
+  maxConcurrentRequests: true
