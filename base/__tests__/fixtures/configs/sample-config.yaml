@@ -4,21 +4,22 @@
 server:
   name: test-mcp-server
   version: "1.0.0"
-  description: A test MCP server for unit testing
+  host: localhost
   port: 3000
 
 tools:
-  - name: calculator
+  calculator:
     enabled: true
-    description: Performs arithmetic operations
-  - name: summarizer
+    timeout: 5000
+  summarizer:
     enabled: true
-    description: Summarizes text
+    timeout: 10000
 
 connectors:
-  - name: mock-api
+  mock-api:
+    type: api
     enabled: true
-    config:
+    settings:
       baseUrl: https://api.test.com
       timeout: 3000
 
@@ -29,5 +30,5 @@ logging:
 
 features:
   enableCache: true
-  cacheTimeout: 300
-  maxConcurrentRequests: 10
+  cacheTimeout: true
+  maxConcurrentRequests: true

@@ -1,13 +1,14 @@
 """
 Sample Summarizer Tool (Python)
 Used for testing Python tool loading
-
-@tool summarizer
-@description Summarizes text to a shorter version
-@param text string The text to summarize  
-@param max_length number Maximum length of summary (default: 100)
-@returns string The summarized text
 """
+
+metadata = {
+    "name": "summarizer",
+    "description": "Summarizes text to a shorter version",
+    "version": "1.0.0",
+    "capabilities": ["text-processing", "summarization"]
+}
 
 def summarizer(text: str, max_length: int = 100) -> str:
     """Summarize text to the specified maximum length."""

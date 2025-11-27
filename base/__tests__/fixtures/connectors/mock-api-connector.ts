@@ -1,13 +1,15 @@
 /**
  * Sample Mock Connector
  * Used for testing connector loading
- * 
- * @connector mock-api
- * @description A mock API connector for testing
- * @config baseUrl string The base URL of the API
- * @config timeout number Request timeout in milliseconds (default: 5000)
- * @secret API_KEY The API key for authentication
  */
+
+export const metadata = {
+    "name": "mock-api",
+    "description": "A mock API connector for testing",
+    "version": "1.0.0",
+    "type": "api",
+    "methods": ["get", "post", "put", "delete"]
+};
 
 export class MockApiConnector {
     private baseUrl: string;
