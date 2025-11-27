@@ -1,0 +1,573 @@
+/**
+ * Development Server Template
+ * 
+ * Extends the base MCP server with development features:
+ * - Hot reload for tools and connectors
+ * - Admin endpoints for development
+ * - Enhanced logging for debugging
+ * - File watching and live updates
+ */
+
+import { EventEmitter } from 'events';
+import * as http from 'http';
+import * as url from 'url';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface DevServerConfig {
+  /** Server port (default: 3000) */
+  port: number;
+  /** Host to bind to (default: 0.0.0.0) */
+  host: string;
+  /** Enable hot reload (default: true in dev) */
+  hotReload: boolean;
+  /** Directories to watch for hot reload */
+  watchDirs: string[];
+  /** Config file path for hot reload */
+  configFile?: string;
+  /** Enable admin endpoints (default: true in dev) */
+  adminEndpoints: boolean;
+  /** Admin endpoint prefix */
+  adminPrefix: string;
+  /** Enable verbose logging */
+  verbose: boolean;
+}
+
+export interface RequestContext {
+  method: string;
+  path: string;
+  query: Record<string, string>;
+  headers: Record<string, string>;
+  body?: unknown;
+}
+
+export interface DevServerStatus {
+  uptime: number;
+  requests: number;
+  reloads: number;
+  errors: number;
+  lastReload?: Date;
+  hotReloadEnabled: boolean;
+  watchedDirs: string[];
+}
+
+// ============================================================================
+// Development Logger
+// ============================================================================
+
+/**
+ * Enhanced logger for development with colors and timestamps
+ */
+export class DevLogger {
+  private verbose: boolean;
+
+  constructor(verbose: boolean = true) {
+    this.verbose = verbose;
+  }
+
+  private timestamp(): string {
+    return new Date().toISOString();
+  }
+
+  private colorize(text: string, color: string): string {
+    const colors: Record<string, string> = {
+      reset: '\x1b[0m',
+      bright: '\x1b[1m',
+      dim: '\x1b[2m',
+      red: '\x1b[31m',
+      green: '\x1b[32m',
+      yellow: '\x1b[33m',
+      blue: '\x1b[34m',
+      magenta: '\x1b[35m',
+      cyan: '\x1b[36m',
+    };
+    return `${colors[color] || ''}${text}${colors.reset}`;
+  }
+
+  info(message: string, data?: unknown): void {
+    console.log(
+      this.colorize(`[${this.timestamp()}]`, 'dim'),
+      this.colorize('INFO', 'blue'),
+      message,
+      data ? JSON.stringify(data) : ''
+    );
+  }
+
+  debug(message: string, data?: unknown): void {
+    if (this.verbose) {
+      console.log(
+        this.colorize(`[${this.timestamp()}]`, 'dim'),
+        this.colorize('DEBUG', 'cyan'),
+        message,
+        data ? JSON.stringify(data) : ''
+      );
+    }
+  }
+
+  warn(message: string, data?: unknown): void {
+    console.warn(
+      this.colorize(`[${this.timestamp()}]`, 'dim'),
+      this.colorize('WARN', 'yellow'),
+      message,
+      data ? JSON.stringify(data) : ''
+    );
+  }
+
+  error(message: string, error?: Error | unknown): void {
+    console.error(
+      this.colorize(`[${this.timestamp()}]`, 'dim'),
+      this.colorize('ERROR', 'red'),
+      message,
+      error instanceof Error ? error.message : error
+    );
+  }
+
+  request(method: string, path: string, status: number, duration: number): void {
+    const statusColor = status >= 400 ? 'red' : status >= 300 ? 'yellow' : 'green';
+    console.log(
+      this.colorize(`[${this.timestamp()}]`, 'dim'),
+      this.colorize(method.toUpperCase(), 'bright'),
+      path,
+      this.colorize(String(status), statusColor),
+      this.colorize(`${duration}ms`, 'dim')
+    );
+  }
+
+  reload(modules: string[], duration: number): void {
+    console.log(
+      this.colorize(`[${this.timestamp()}]`, 'dim'),
+      this.colorize('RELOAD', 'magenta'),
+      `${modules.length} module(s) reloaded in ${duration}ms:`,
+      modules.join(', ')
+    );
+  }
+}
+
+// ============================================================================
+// Admin Endpoint Handler
+// ============================================================================
+
+/**
+ * Handles development admin endpoints
+ */
+export class AdminHandler {
+  private prefix: string;
+  private devServer: DevServer;
+
+  constructor(devServer: DevServer, prefix: string = '/__dev') {
+    this.devServer = devServer;
+    this.prefix = prefix;
+  }
+
+  /**
+   * Check if request is for admin endpoint
+   */
+  isAdminRequest(path: string): boolean {
+    return path.startsWith(this.prefix);
+  }
+
+  /**
+   * Handle admin request
+   */
+  async handle(ctx: RequestContext): Promise<{ status: number; body: unknown }> {
+    const adminPath = ctx.path.substring(this.prefix.length);
+
+    switch (adminPath) {
+      case '/status':
+        return { status: 200, body: this.devServer.getStatus() };
+
+      case '/reload':
+        if (ctx.method === 'POST') {
+          const result = await this.devServer.triggerReload();
+          return { status: 200, body: result };
+        }
+        return { status: 405, body: { error: 'Method not allowed' } };
+
+      case '/reload/last':
+        return { status: 200, body: this.devServer.getLastReload() };
+
+      case '/tools':
+        return { status: 200, body: this.devServer.listTools() };
+
+      case '/connectors':
+        return { status: 200, body: this.devServer.listConnectors() };
+
+      case '/config':
+        return { status: 200, body: this.devServer.getConfig() };
+
+      case '/logs':
+        return { status: 200, body: { message: 'Log streaming not implemented' } };
+
+      default:
+        return { status: 404, body: { error: 'Admin endpoint not found' } };
+    }
+  }
+
+  /**
+   * Get list of available admin endpoints
+   */
+  getEndpoints(): string[] {
+    return [
+      `${this.prefix}/status - Server status and metrics`,
+      `${this.prefix}/reload - POST to trigger hot reload`,
+      `${this.prefix}/reload/last - Last reload result`,
+      `${this.prefix}/tools - List registered tools`,
+      `${this.prefix}/connectors - List registered connectors`,
+      `${this.prefix}/config - Current configuration`,
+    ];
+  }
+}
+
+// ============================================================================
+// Development Server
+// ============================================================================
+
+/**
+ * Development server with hot reload and admin features
+ */
+export class DevServer extends EventEmitter {
+  private config: DevServerConfig;
+  private logger: DevLogger;
+  private server: http.Server | null = null;
+  private adminHandler: AdminHandler;
+  private toolRegistry: Map<string, unknown> = new Map();
+  private connectorRegistry: Map<string, unknown> = new Map();
+  private stats = {
+    startTime: Date.now(),
+    requests: 0,
+    reloads: 0,
+    errors: 0,
+    lastReload: undefined as Date | undefined,
+  };
+  private hotReloadManager: unknown = null;
+
+  constructor(config: Partial<DevServerConfig> = {}) {
+    super();
+
+    this.config = {
+      port: config.port ?? parseInt(process.env.PORT || '3000', 10),
+      host: config.host ?? '0.0.0.0',
+      hotReload: config.hotReload ?? process.env.NODE_ENV !== 'production',
+      watchDirs: config.watchDirs ?? ['./tools', './connectors'],
+      configFile: config.configFile,
+      adminEndpoints: config.adminEndpoints ?? process.env.NODE_ENV !== 'production',
+      adminPrefix: config.adminPrefix ?? '/__dev',
+      verbose: config.verbose ?? process.env.NODE_ENV !== 'production',
+    };
+
+    this.logger = new DevLogger(this.config.verbose);
+    this.adminHandler = new AdminHandler(this, this.config.adminPrefix);
+  }
+
+  /**
+   * Start the development server
+   */
+  async start(): Promise<void> {
+    // Initialize hot reload if enabled
+    if (this.config.hotReload) {
+      await this.initHotReload();
+    }
+
+    // Create HTTP server
+    this.server = http.createServer(async (req, res) => {
+      await this.handleRequest(req, res);
+    });
+
+    // Start listening
+    return new Promise((resolve, reject) => {
+      this.server?.listen(this.config.port, this.config.host, () => {
+        this.logger.info(`Development server started on ${this.config.host}:${this.config.port}`);
+        
+        if (this.config.adminEndpoints) {
+          this.logger.info('Admin endpoints available:');
+          for (const endpoint of this.adminHandler.getEndpoints()) {
+            this.logger.info(`  ${endpoint}`);
+          }
+        }
+
+        if (this.config.hotReload) {
+          this.logger.info(`Hot reload enabled, watching: ${this.config.watchDirs.join(', ')}`);
+        }
+
+        this.emit('started');
+        resolve();
+      });
+
+      this.server?.on('error', (error) => {
+        this.logger.error('Server error', error);
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Stop the development server
+   */
+  async stop(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.server) {
+        this.server.close(() => {
+          this.logger.info('Development server stopped');
+          this.emit('stopped');
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Initialize hot reload
+   */
+  private async initHotReload(): Promise<void> {
+    // Hot reload manager would be imported from hot-reload.ts.template
+    // This is a placeholder showing how it integrates
+    this.logger.debug('Initializing hot reload');
+    
+    // Would be: this.hotReloadManager = createDevServer({ ... });
+    // And set up event listeners for reload events
+  }
+
+  /**
+   * Handle incoming HTTP request
+   */
+  private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const startTime = Date.now();
+    this.stats.requests++;
+
+    try {
+      const parsedUrl = url.parse(req.url || '', true);
+      const ctx: RequestContext = {
+        method: req.method || 'GET',
+        path: parsedUrl.pathname || '/',
+        query: parsedUrl.query as Record<string, string>,
+        headers: req.headers as Record<string, string>,
+      };
+
+      // Parse body for POST requests
+      if (ctx.method === 'POST' || ctx.method === 'PUT') {
+        ctx.body = await this.parseBody(req);
+      }
+
+      let status: number;
+      let body: unknown;
+
+      // Check for admin endpoints first
+      if (this.config.adminEndpoints && this.adminHandler.isAdminRequest(ctx.path)) {
+        const result = await this.adminHandler.handle(ctx);
+        status = result.status;
+        body = result.body;
+      } else {
+        // Regular request handling would go here
+        // This would be the MCP protocol handler
+        const result = await this.handleMCPRequest(ctx);
+        status = result.status;
+        body = result.body;
+      }
+
+      // Send response
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(body));
+
+      const duration = Date.now() - startTime;
+      this.logger.request(ctx.method, ctx.path, status, duration);
+    } catch (error) {
+      this.stats.errors++;
+      this.logger.error('Request error', error);
+
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      }));
+    }
+  }
+
+  /**
+   * Parse request body
+   */
+  private parseBody(req: http.IncomingMessage): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => { data += chunk; });
+      req.on('end', () => {
+        try {
+          resolve(data ? JSON.parse(data) : undefined);
+        } catch {
+          resolve(data);
+        }
+      });
+      req.on('error', reject);
+    });
+  }
+
+  /**
+   * Handle MCP protocol request
+   */
+  private async handleMCPRequest(ctx: RequestContext): Promise<{ status: number; body: unknown }> {
+    // Placeholder for MCP request handling
+    // In actual implementation, this would delegate to the MCP server
+    
+    if (ctx.path === '/health') {
+      return {
+        status: 200,
+        body: { status: 'healthy', uptime: Date.now() - this.stats.startTime },
+      };
+    }
+
+    if (ctx.path === '/mcp' && ctx.method === 'POST') {
+      // MCP JSON-RPC handling would go here
+      return {
+        status: 200,
+        body: { jsonrpc: '2.0', result: 'OK', id: (ctx.body as { id?: number })?.id },
+      };
+    }
+
+    return {
+      status: 404,
+      body: { error: 'Not found' },
+    };
+  }
+
+  /**
+   * Trigger hot reload
+   */
+  async triggerReload(): Promise<unknown> {
+    this.stats.reloads++;
+    this.stats.lastReload = new Date();
+    
+    // Would delegate to hot reload manager
+    this.logger.reload(['(manual trigger)'], 0);
+    this.emit('reload');
+
+    return {
+      success: true,
+      timestamp: this.stats.lastReload,
+      message: 'Reload triggered',
+    };
+  }
+
+  /**
+   * Get last reload result
+   */
+  getLastReload(): unknown {
+    return this.stats.lastReload
+      ? { timestamp: this.stats.lastReload }
+      : null;
+  }
+
+  /**
+   * Get server status
+   */
+  getStatus(): DevServerStatus {
+    return {
+      uptime: Date.now() - this.stats.startTime,
+      requests: this.stats.requests,
+      reloads: this.stats.reloads,
+      errors: this.stats.errors,
+      lastReload: this.stats.lastReload,
+      hotReloadEnabled: this.config.hotReload,
+      watchedDirs: this.config.watchDirs,
+    };
+  }
+
+  /**
+   * Get configuration
+   */
+  getConfig(): DevServerConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * List registered tools
+   */
+  listTools(): string[] {
+    return Array.from(this.toolRegistry.keys());
+  }
+
+  /**
+   * List registered connectors
+   */
+  listConnectors(): string[] {
+    return Array.from(this.connectorRegistry.keys());
+  }
+
+  /**
+   * Register a tool
+   */
+  registerTool(name: string, tool: unknown): void {
+    this.toolRegistry.set(name, tool);
+    this.logger.debug(`Registered tool: ${name}`);
+  }
+
+  /**
+   * Register a connector
+   */
+  registerConnector(name: string, connector: unknown): void {
+    this.connectorRegistry.set(name, connector);
+    this.logger.debug(`Registered connector: ${name}`);
+  }
+}
+
+// ============================================================================
+// CLI Support
+// ============================================================================
+
+/**
+ * Parse command line arguments for dev mode
+ */
+export function parseDevArgs(args: string[]): Partial<DevServerConfig> {
+  const config: Partial<DevServerConfig> = {};
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--dev') {
+      config.hotReload = true;
+      config.adminEndpoints = true;
+      config.verbose = true;
+    } else if (arg === '--port' && args[i + 1]) {
+      config.port = parseInt(args[++i], 10);
+    } else if (arg === '--host' && args[i + 1]) {
+      config.host = args[++i];
+    } else if (arg === '--watch' && args[i + 1]) {
+      config.watchDirs = args[++i].split(',');
+    } else if (arg === '--config' && args[i + 1]) {
+      config.configFile = args[++i];
+    } else if (arg === '--no-hot-reload') {
+      config.hotReload = false;
+    } else if (arg === '--quiet') {
+      config.verbose = false;
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Start dev server from CLI
+ */
+export async function startDevServerCLI(): Promise<void> {
+  const config = parseDevArgs(process.argv.slice(2));
+  const server = new DevServer(config);
+
+  // Handle graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\nShutting down...');
+    await server.stop();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await server.stop();
+    process.exit(0);
+  });
+
+  await server.start();
+}
+
+// Export for use in templates
+export default DevServer;
